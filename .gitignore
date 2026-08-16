@@ -2,3 +2,4 @@
 readme/
 
 # No subir estos archivos al repositorio
+.env

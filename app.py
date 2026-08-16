@@ -11,20 +11,20 @@ from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.units import inch, cm
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
-from supabase import create_client, Client
+from supabase import create_client, Client # type: ignore
 
 # ============================================================
 # 1. CONFIGURACIÓN DE SUPABASE
 # ============================================================
 # Si usas variables de entorno en Render, descomenta estas líneas:
-# SUPABASE_URL = os.environ.get('SUPABASE_URL')
-# SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 # Si no, ponlas directamente aquí (NO recomendado para producción, pero válido para pruebas rápidas):
-SUPABASE_URL = "https://tu-proyecto.supabase.co"  # <--- CAMBIAME
-SUPABASE_KEY = "tu-anon-key-publica"              # <--- CAMBIAME
+#SUPABASE_URL = "https://wicezigksaezaroixuyc.supabase.co"  # <--- CAMBIAME
+#SUPABASE_KEY = "tu-anon-key-publica"              # <--- CAMBIAME
 
 supabase: Client = None # type: ignore
-if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "https://tu-proyecto.supabase.co":
+if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "https://wicezigksaezaroixuyc.supabase.co":
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ============================================================
