@@ -25,7 +25,11 @@ SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 
 supabase: Client = None # type: ignore
 if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "https://wicezigksaezaroixuyc.supabase.co":
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+   try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("✅ Supabase conectado")
+    except Exception as e: # type: ignore
+        print(f"⚠️ Error conectando a Supabase: {e}")
 
 # ============================================================
 # 2. INICIALIZACIÓN DE FLASK
