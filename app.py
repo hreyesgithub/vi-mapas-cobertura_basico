@@ -111,6 +111,113 @@ def calculate_rssi_py(tx_power, dist_m, wall_count):
     return round(tx_power - path_loss, 2)
 
 # ============================================================
+# NUEVO: DETECTOR DE INTERFERENCIAS
+# ============================================================
+def diagnosticar_interferencias(respuestas):
+    """
+    respuestas: dict con las claves:
+        - redes_vecinas: int (0, 1-3, 4-6, >6)
+        - microondas: bool
+        - bluetooth: bool
+        - paredes_metal: bool
+        - horas_pico: bool
+        - soporta_5ghz: bool
+        - dispositivos_conectados: int
+    Retorna: dict con diagnóstico y recomendaciones.
+    """
+    diagnostico = {
+        "nivel": "bajo",
+        "mensaje": "",
+        "recomendaciones": [],
+        "canales_sugeridos": [],
+        "acciones_urgentes": []
+    }
+    
+    # Factores de riesgo
+    riesgo = 0
+    factores = []
+    
+    # 1. Redes vecinas
+    if respuestas.get("redes_vecinas", 0) > 6:
+        riesgo += 3
+        factores.append("Muchas redes vecinas (>6) saturan el espectro.")
+        diagnostico["recomendaciones"].append("Cambia a canales menos congestionados (1, 6 o 11) y usa 5 GHz si es posible.")
+    elif respuestas.get("redes_vecinas", 0) > 3:
+        riesgo += 2
+        factores.append("Redes vecinas moderadas (4-6).")
+        diagnostico["recomendaciones"].append("Monitorea el canal más libre con un analizador de espectro.")
+    
+    # 2. Microondas
+    if respuestas.get("microondas", False):
+        riesgo += 2
+        factores.append("Microondas cerca genera interferencia en 2.4 GHz.")
+        diagnostico["recomendaciones"].append("Aleja el microondas del AP o usa 5 GHz.")
+    
+    # 3. Bluetooth
+    if respuestas.get("bluetooth", False):
+        riesgo += 1
+        factores.append("Dispositivos Bluetooth pueden interferir en 2.4 GHz.")
+        diagnostico["recomendaciones"].append("Usa canales 1, 6 o 11 y prioriza 5 GHz.")
+    
+    # 4. Paredes metálicas
+    if respuestas.get("paredes_metal", False):
+        riesgo += 2
+        factores.append("Estructura metálica atenúa la señal y causa reflexiones.")
+        diagnostico["recomendaciones"].append("Coloca APs en línea de visión y usa antenas direccionales.")
+    
+    # 5. Horas pico
+    if respuestas.get("horas_pico", False):
+        riesgo += 1
+        factores.append("El problema empeora en horas de mayor uso.")
+        diagnostico["recomendaciones"].append("Implementa QoS o balanceo de carga entre APs.")
+    
+    # 6. Dispositivos conectados
+    dispositivos = respuestas.get("dispositivos_conectados", 0)
+    if dispositivos > 20:
+        riesgo += 2
+        factores.append(f"Demasiados dispositivos ({dispositivos}) para un solo AP.")
+        diagnostico["recomendaciones"].append("Añade más APs o usa uno con mayor capacidad.")
+    elif dispositivos > 10:
+        riesgo += 1
+        factores.append(f"{dispositivos} dispositivos conectados, cerca del límite.")
+        diagnostico["recomendaciones"].append("Considera un AP adicional.")
+    
+    # 7. Soporte 5 GHz
+    if not respuestas.get("soporta_5ghz", False):
+        riesgo += 1
+        factores.append("Equipo solo 2.4 GHz, más propenso a interferencias.")
+        diagnostico["recomendaciones"].append("Actualiza a APs con 5 GHz para menos congestión.")
+    
+    # Nivel de riesgo
+    if riesgo >= 7:
+        diagnostico["nivel"] = "crítico"
+        diagnostico["mensaje"] = "Interferencia severa detectada. Se recomienda una intervención inmediata."
+        diagnostico["acciones_urgentes"] = [
+            "Realiza un site survey profesional con un analizador de espectro.",
+            "Cambia de canal a 5 GHz (DFS si es posible).",
+            "Reubica el AP principal lejos de fuentes de interferencia."
+        ]
+    elif riesgo >= 4:
+        diagnostico["nivel"] = "moderado"
+        diagnostico["mensaje"] = "Interferencia significativa. Mejoras recomendadas."
+        diagnostico["acciones_urgentes"] = [
+            "Prueba canales menos congestionados (usa 1, 6 o 11).",
+            "Si tienes 5 GHz, migra dispositivos críticos a esa banda."
+        ]
+    else:
+        diagnostico["nivel"] = "bajo"
+        diagnostico["mensaje"] = "Interferencia baja. Tu red debería funcionar bien."
+        diagnostico["acciones_urgentes"] = ["Mantén un monitoreo regular."]
+    
+    # Canales sugeridos (según nivel)
+    if diagnostico["nivel"] in ["crítico", "moderado"]:
+        diagnostico["canales_sugeridos"] = ["1", "6", "11 (para 2.4 GHz)", "36-48 (para 5 GHz)"]
+    else:
+        diagnostico["canales_sugeridos"] = ["Cualquier canal libre (usa herramienta de escaneo)"]
+    
+    return diagnostico
+
+# ============================================================
 # 5. EVALUADOR DE COBERTURA PARA OPTIMIZACIÓN
 # ============================================================
 def evaluate_coverage(ap_positions, width, height, walls):
@@ -369,6 +476,53 @@ def health():
         'supabase_connected': supabase is not None,
         'timestamp': datetime.utcnow().isoformat()
     })
+
+@app.route('/api/diagnosticar-interferencias', methods=['POST'])
+def diagnosticar():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+        
+        # Extraer respuestas
+        respuestas = {
+            'redes_vecinas': int(data.get('redes_vecinas', 0)),
+            'microondas': data.get('microondas', False),
+            'bluetooth': data.get('bluetooth', False),
+            'paredes_metal': data.get('paredes_metal', False),
+            'horas_pico': data.get('horas_pico', False),
+            'soporta_5ghz': data.get('soporta_5ghz', False),
+            'dispositivos_conectados': int(data.get('dispositivos_conectados', 0))
+        }
+        
+        # Obtener diagnóstico
+        diagnostico = diagnosticar_interferencias(respuestas)
+        
+        # (Opcional) Guardar lead en Supabase
+        email = data.get('email')
+        if email and supabase:
+            try:
+                supabase.table('leads').insert({
+                    'email': email,
+                    'industry': data.get('industry', 'No especificado'),
+                    'product': 'interference_detector',
+                    'source': 'web',
+                    'metadata': {
+                        'respuestas': respuestas,
+                        'diagnostico': diagnostico
+                    }
+                }).execute()
+            except Exception as e:
+                print(f"⚠️ Error guardando lead: {e}")
+        
+        return jsonify({
+            'diagnostico': diagnostico,
+            'resumen': f"Nivel de interferencia: {diagnostico['nivel'].upper()}"
+        })
+    
+    except Exception as e:
+        print(f"Error en /api/diagnosticar-interferencias: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================
 # 10. ARRANQUE

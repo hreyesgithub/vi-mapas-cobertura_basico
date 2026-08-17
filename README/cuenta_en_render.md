@@ -16,3 +16,9 @@ Dirección de url de Render:
 1. Verificar que el backend está vivo
 
 - url: `https://vi-mapas-cobertura-basico.onrender.com/health`
+
+Funcionamiento correcto, salida esperada:
+
+```json
+{"status":"ok","supabase_connected":false,"timestamp":"2026-08-16T15:51:28.431382"}
+```
