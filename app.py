@@ -483,8 +483,8 @@ def diagnosticar():
         data = request.get_json()
         if not data:
             return jsonify({'error': 'Faltan datos'}), 400
-        
-        # Extraer respuestas
+
+        # Extraer respuestas (con valores por defecto)
         respuestas = {
             'redes_vecinas': int(data.get('redes_vecinas', 0)),
             'microondas': data.get('microondas', False),
@@ -494,36 +494,62 @@ def diagnosticar():
             'soporta_5ghz': data.get('soporta_5ghz', False),
             'dispositivos_conectados': int(data.get('dispositivos_conectados', 0))
         }
-        
-        # Obtener diagnóstico
+
         diagnostico = diagnosticar_interferencias(respuestas)
-        
-        # (Opcional) Guardar lead en Supabase
+
+        # ============================================================
+        # GUARDAR EN SUPABASE (solo si hay email)
+        # ============================================================
+        guardado_exitoso = False
+        mensaje_guardado = ""
         email = data.get('email')
+
         if email and supabase:
             try:
-                supabase.table('leads').insert({
+                metadata = {
+                    'respuestas': respuestas,
+                    'diagnostico': diagnostico,
+                    'resumen': data.get('resumen', '')
+                }
+
+                result = supabase.table('leads').insert({
                     'email': email,
                     'industry': data.get('industry', 'No especificado'),
                     'product': 'interference_detector',
                     'source': 'web',
-                    'metadata': {
-                        'respuestas': respuestas,
-                        'diagnostico': diagnostico
-                    }
+                    'metadata': metadata,
+                    'template_used': 'interference_detector',
+                    'generated_at': datetime.utcnow().isoformat()
                 }).execute()
+
+                guardado_exitoso = True
+                mensaje_guardado = f"Lead guardado con ID: {result.data[0]['id'] if result.data else 'N/A'}"
+                print(f"✅ {mensaje_guardado}")
+
             except Exception as e:
-                print(f"⚠️ Error guardando lead: {e}")
-        
+                mensaje_guardado = f"Error al guardar: {str(e)}"
+                print(f"❌ {mensaje_guardado}")
+        else:
+            if not email:
+                mensaje_guardado = "No se proporcionó email."
+            else:
+                mensaje_guardado = "Supabase no está conectado."
+            print(f"⚠️ {mensaje_guardado}")
+
+        # ============================================================
+        # RESPUESTA (siempre devolvemos el diagnóstico)
+        # ============================================================
         return jsonify({
             'diagnostico': diagnostico,
-            'resumen': f"Nivel de interferencia: {diagnostico['nivel'].upper()}"
+            'resumen': f"Nivel de interferencia: {diagnostico['nivel'].upper()}",
+            'guardado': guardado_exitoso,
+            'mensaje_guardado': mensaje_guardado
         })
-    
-    except Exception as e:
-        print(f"Error en /api/diagnosticar-interferencias: {e}")
-        return jsonify({'error': str(e)}), 500
 
+    except Exception as e:
+        print(f"❌ Error general: {e}")
+        return jsonify({'error': str(e)}), 500
+    
 # ============================================================
 # 10. ARRANQUE
 # ============================================================
