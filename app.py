@@ -563,7 +563,7 @@ def enviar_correo_diagnostico(email, diagnostico, respuestas):
     
     try:
         response = resend.Emails.send({
-            "from": "Venezuela Insights <diagnostico@tu-dominio.com>",
+            "from": "Venezuela Insights <info@venezuelainsights.com>",
             "to": email,
             "subject": "Tu diagnóstico de interferencia WiFi",
             "html": html_content
