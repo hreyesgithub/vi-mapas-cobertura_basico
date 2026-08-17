@@ -19,18 +19,16 @@ from supabase import create_client, Client # type: ignore
 # Si usas variables de entorno en Render, descomenta estas líneas:
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
-# Si no, ponlas directamente aquí (NO recomendado para producción, pero válido para pruebas rápidas):
-#SUPABASE_URL = "https://wicezigksaezaroixuyc.supabase.co"  # <--- CAMBIAME
-#SUPABASE_KEY = "tu-anon-key-publica"              # <--- CAMBIAME
 
 supabase: Client = None # type: ignore
-if SUPABASE_URL and SUPABASE_KEY and SUPABASE_URL != "https://wicezigksaezaroixuyc.supabase.co":
+if SUPABASE_URL and SUPABASE_KEY:
     try:
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         print("✅ Supabase conectado")
     except Exception as e: # type: ignore
         print(f"⚠️ Error conectando a Supabase: {e}")
-
+else:
+    print("⚠️ SUPABASE_URL o SUPABASE_KEY no configuradas en el entorno")
 # ============================================================
 # 2. INICIALIZACIÓN DE FLASK
 # ============================================================
@@ -481,6 +479,7 @@ def health():
 def diagnosticar():
     try:
         data = request.get_json()
+        print(f"📩 Payload recibido: {json.dumps(data, indent=2)}")  # <-- LOG
         if not data:
             return jsonify({'error': 'Faltan datos'}), 400
 
@@ -506,6 +505,8 @@ def diagnosticar():
         guardado_exitoso = False
         mensaje_guardado = ""
         email = data.get('email')
+
+        print(f"📧 Email extraído: {email}")
 
         if email and supabase:
             try:
