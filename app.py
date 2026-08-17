@@ -524,54 +524,6 @@ def diagnosticar():
         print(f"Error en /api/diagnosticar-interferencias: {e}")
         return jsonify({'error': str(e)}), 500
 
-import resend
-
-# Configurar Resend
-resend.api_key = os.environ.get("RESEND_API_KEY", "")
-
-def enviar_correo_diagnostico(email, diagnostico, respuestas):
-    """Envía el diagnóstico por correo con Resend."""
-    if not resend.api_key:
-        print("⚠️ RESEND_API_KEY no configurado, no se envía correo.")
-        return
-    
-    # Construir HTML del correo
-    html_content = f"""
-    <h2>📡 Diagnóstico de Interferencia WiFi</h2>
-    <p>Gracias por utilizar nuestro detector. Aquí tienes los resultados:</p>
-    
-    <h3>Nivel de Interferencia: <strong>{diagnostico['nivel'].upper()}</strong></h3>
-    <p>{diagnostico['mensaje']}</p>
-    
-    <h4>Recomendaciones:</h4>
-    <ul>
-        {''.join(f'<li>{r}</li>' for r in diagnostico['recomendaciones'])}
-    </ul>
-    
-    <h4>Acciones urgentes:</h4>
-    <ul>
-        {''.join(f'<li>{a}</li>' for a in diagnostico['acciones_urgentes'])}
-    </ul>
-    
-    <h4>Canales sugeridos:</h4>
-    <p>{', '.join(diagnostico['canales_sugeridos'])}</p>
-    
-    <hr>
-    <p style="font-size:0.8rem; color:#666;">Este es un diagnóstico preliminar. Para un análisis profesional, solicita un estudio de RF completo.</p>
-    <p style="font-size:0.8rem; color:#666;">Venezuela Insights - Optimización de Redes</p>
-    """
-    
-    try:
-        response = resend.Emails.send({
-            "from": "Venezuela Insights <info@venezuelainsights.com>",
-            "to": email,
-            "subject": "Tu diagnóstico de interferencia WiFi",
-            "html": html_content
-        })
-        print(f"✅ Correo enviado a {email} con ID: {response}")
-    except Exception as e:
-        print(f"❌ Error enviando correo: {e}")
-
 # ============================================================
 # 10. ARRANQUE
 # ============================================================
