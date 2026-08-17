@@ -484,7 +484,7 @@ def diagnosticar():
         if not data:
             return jsonify({'error': 'Faltan datos'}), 400
 
-        # Extraer respuestas (con valores por defecto)
+        # Extraer respuestas (con valores por defecto si no vienen)
         respuestas = {
             'redes_vecinas': int(data.get('redes_vecinas', 0)),
             'microondas': data.get('microondas', False),
@@ -495,7 +495,10 @@ def diagnosticar():
             'dispositivos_conectados': int(data.get('dispositivos_conectados', 0))
         }
 
-        diagnostico = diagnosticar_interferencias(respuestas)
+        # Si el payload trae 'diagnostico' directamente, usarlo; si no, generarlo
+        diagnostico = data.get('diagnostico')
+        if not diagnostico:
+            diagnostico = diagnosticar_interferencias(respuestas)
 
         # ============================================================
         # GUARDAR EN SUPABASE (solo si hay email)
@@ -537,7 +540,7 @@ def diagnosticar():
             print(f"⚠️ {mensaje_guardado}")
 
         # ============================================================
-        # RESPUESTA (siempre devolvemos el diagnóstico)
+        # RESPUESTA
         # ============================================================
         return jsonify({
             'diagnostico': diagnostico,
@@ -547,7 +550,7 @@ def diagnosticar():
         })
 
     except Exception as e:
-        print(f"❌ Error general: {e}")
+        print(f"❌ Error general en /api/diagnosticar-interferencias: {e}")
         return jsonify({'error': str(e)}), 500
     
 # ============================================================
