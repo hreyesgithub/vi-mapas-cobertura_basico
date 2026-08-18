@@ -553,7 +553,161 @@ def diagnosticar():
     except Exception as e:
         print(f"❌ Error general en /api/diagnosticar-interferencias: {e}")
         return jsonify({'error': str(e)}), 500
-    
+
+# ============================================================
+# NUEVO ENDPOINT: CALCULADORA DE CAPACIDAD
+# ============================================================
+@app.route('/api/calcular-capacidad', methods=['POST'])
+def calcular_capacidad():
+    """
+    Calcula la capacidad necesaria de red WiFi basada en:
+    - Número de usuarios concurrentes
+    - Ancho de banda por usuario (Mbps)
+    - Tipo de aplicación (streaming, navegación, mixto, etc.)
+    Devuelve: APs necesarios, ancho de banda total, recomendaciones
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        # Parámetros de entrada
+        usuarios = int(data.get('usuarios', 0))
+        ancho_banda_por_usuario = float(data.get('ancho_banda', 5))
+        tipo_aplicacion = data.get('tipo_aplicacion', 'mixto')
+        email = data.get('email')
+        industry = data.get('industry', 'No especificado')
+
+        # Validaciones
+        if usuarios <= 0:
+            return jsonify({'error': 'El número de usuarios debe ser mayor a 0'}), 400
+        if ancho_banda_por_usuario <= 0:
+            return jsonify({'error': 'El ancho de banda debe ser mayor a 0'}), 400
+
+        # ============================================================
+        # CÁLCULOS
+        # ============================================================
+
+        # Factores de corrección según tipo de aplicación
+        factores_concurrencia = {
+            'streaming': 0.8,      # Alta demanda: muchos usuarios usan streaming
+            'navegacion': 0.5,     # Baja demanda: navegación ligera
+            'mixto': 0.65,         # Mixto: combinación promedio
+            'video_llamadas': 0.75, # Alta demanda: videollamadas constantes
+            'iot': 0.3             # Muy baja demanda: dispositivos IoT
+        }
+        factor_concurrencia = factores_concurrencia.get(tipo_aplicacion, 0.65)
+
+        # Ancho de banda total requerido (Mbps)
+        ancho_banda_total = usuarios * ancho_banda_por_usuario * factor_concurrencia
+
+        # Capacidad real de un AP empresarial (Mbps) - incluye overhead
+        capacidad_ap_mbps = 450  # AP Wi-Fi 5 (802.11ac) en condiciones reales
+
+        # Si es Wi-Fi 6, mayor capacidad
+        wifi_version = data.get('wifi_version', 'wifi5')
+        if wifi_version == 'wifi6':
+            capacidad_ap_mbps = 800  # Wi-Fi 6 (802.11ax) ofrece mayor throughput
+
+        # Número de APs necesarios (redondeamos al alza)
+        aps_necesarios = max(1, int(ancho_banda_total / capacidad_ap_mbps) + 1)
+
+        # Capacidad por usuario (Mbps) después de repartir
+        capacidad_por_usuario = round(ancho_banda_total / usuarios, 2)
+
+        # ============================================================
+        # RECOMENDACIONES
+        # ============================================================
+        recomendaciones = []
+
+        # Recomendación básica de canales
+        if aps_necesarios == 1:
+            recomendaciones.append("Un solo AP es suficiente. Usa canales 1, 6 o 11 para 2.4 GHz y canales 36-48 para 5 GHz.")
+        elif aps_necesarios <= 3:
+            recomendaciones.append(f"Distribuye los {aps_necesarios} APs en canales diferentes (1, 6, 11 para 2.4 GHz) para evitar interferencias.")
+        else:
+            recomendaciones.append(f"Con {aps_necesarios} APs, considera un controlador de red y uso de canales DFS para 5 GHz.")
+
+        # Recomendación por tipo de aplicación
+        if tipo_aplicacion == 'streaming':
+            recomendaciones.append("Prioriza el uso de 5 GHz para streaming de video y evita la banda de 2.4 GHz.")
+        elif tipo_aplicacion == 'video_llamadas':
+            recomendaciones.append("Implementa QoS (Quality of Service) para priorizar tráfico de videollamadas.")
+        elif tipo_aplicacion == 'iot':
+            recomendaciones.append("Usa 2.4 GHz para dispositivos IoT y reserva 5 GHz para dispositivos críticos.")
+
+        # Recomendación por densidad
+        if usuarios > 50:
+            recomendaciones.append("Alta densidad de usuarios (>50). Considera APs con MU-MIMO y beamforming.")
+
+        # ============================================================
+        # GUARDAR EN SUPABASE (usando la función SECURITY DEFINER)
+        # ============================================================
+        guardado_exitoso = False
+        mensaje_guardado = ""
+
+        if email and supabase:
+            try:
+                # Usamos la función RPC que creamos anteriormente
+                result = supabase.rpc(
+                    'insertar_lead',
+                    {
+                        'p_email': email,
+                        'p_industry': industry,
+                        'p_product': 'capacity_calculator',
+                        'p_source': 'web',
+                        'p_metadata': {
+                            'usuarios': usuarios,
+                            'ancho_banda_por_usuario': ancho_banda_por_usuario,
+                            'tipo_aplicacion': tipo_aplicacion,
+                            'wifi_version': wifi_version,
+                            'factor_concurrencia': factor_concurrencia,
+                            'ancho_banda_total': ancho_banda_total,
+                            'aps_necesarios': aps_necesarios,
+                            'capacidad_por_usuario': capacidad_por_usuario,
+                            'recomendaciones': recomendaciones
+                        },
+                        'p_template_used': 'capacity_calculator'
+                    }
+                ).execute()
+
+                guardado_exitoso = True
+                mensaje_guardado = f"Lead guardado con ID: {result.data['id'] if result.data else 'N/A'}" # type: ignore
+                print(f"✅ {mensaje_guardado}")
+
+            except Exception as e:
+                mensaje_guardado = f"Error al guardar: {str(e)}"
+                print(f"❌ {mensaje_guardado}")
+        else:
+            if not email:
+                mensaje_guardado = "No se proporcionó email."
+            else:
+                mensaje_guardado = "Supabase no está conectado."
+            print(f"⚠️ {mensaje_guardado}")
+
+        # ============================================================
+        # RESPUESTA
+        # ============================================================
+        return jsonify({
+            'ancho_banda_total_mbps': round(ancho_banda_total, 2),
+            'aps_necesarios': aps_necesarios,
+            'capacidad_por_usuario': capacidad_por_usuario,
+            'factor_concurrencia': factor_concurrencia,
+            'recomendaciones': recomendaciones,
+            'detalles': {
+                'usuarios': usuarios,
+                'ancho_banda_por_usuario': ancho_banda_por_usuario,
+                'tipo_aplicacion': tipo_aplicacion,
+                'wifi_version': wifi_version
+            },
+            'guardado': guardado_exitoso,
+            'mensaje_guardado': mensaje_guardado
+        })
+
+    except Exception as e:
+        print(f"❌ Error en /api/calcular-capacidad: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # ============================================================
 # 10. ARRANQUE
 # ============================================================
