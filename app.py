@@ -13,6 +13,12 @@ from reportlab.lib.units import inch, cm
 from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
 from supabase import create_client, Client # type: ignore
+import logging
+import time
+
+# Configurar el logger al inicio de tu app.py
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # 1. CONFIGURACIÓN DE SUPABASE
@@ -779,14 +785,20 @@ def analizar_sombras():
     Devuelve: { porcentaje_sombra, puntos_sombra, sugerencias }
     """
     try:
+        start_time = time.time()
+        logger.info("Iniciando análisis de sombras RF...")
+
         data = request.get_json()
         if not data:
+            logger.warning("Petición rechazada: Faltan datos en el body.")
             return jsonify({'error': 'Faltan datos'}), 400
 
         aps = data.get('aps', [])
         walls = data.get('walls', [])
         width = data.get('width', 800)
         height = data.get('height', 500)
+
+        logger.info(f"Procesando {len(aps)} APs y {len(walls)} paredes...")
 
         if not aps:
             return jsonify({'error': 'No hay puntos de acceso configurados'}), 400
@@ -882,6 +894,9 @@ def analizar_sombras():
             guardado = False
             msg = "No se proporcionó email."
 
+        elapsed_time = time.time() - start_time
+        logger.info(f"Análisis completado en {elapsed_time:.2f} segundos. Puntos de sombra: {puntos_sombra}.")
+
         # ============================================================
         # Respuesta JSON
         # ============================================================
@@ -897,6 +912,7 @@ def analizar_sombras():
 
     except Exception as e:
         print(f"❌ Error en /api/analizar-sombras: {e}")
+        logger.exception(f"❌ Error crítico en /api/analizar-sombras: {str(e)}")
         return jsonify({'error': str(e)}), 500
     
 # ============================================================
