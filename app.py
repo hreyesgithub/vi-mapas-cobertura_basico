@@ -380,54 +380,40 @@ def generar_propuesta_gemini(
 # ============================================================
 # FUNCIONES GENERALES
 # ============================================================
-def guardar_lead_en_supabase(email, industry, product, source, metadata, template_used):
+def guardar_lead_en_supabase(email, industry, product, source, metadata, template_used=None):
     """
-    Guarda un lead en Supabase usando la función RPC 'insertar_lead'.
+    Guarda un lead en Supabase usando la API REST con returning='minimal'.
     Devuelve: (guardado_exitoso, mensaje_guardado)
     """
-    guardado_exitoso = False
-    mensaje_guardado = ""
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        return False, "Supabase no configurado"
+    if not email:
+        return False, "Email no proporcionado"
 
-    if email and supabase:
-        try:
-            result = supabase.rpc(
-                "insertar_lead",
-                {
-                    "p_email": email,
-                    "p_industry": industry,
-                    "p_product": product,
-                    "p_source": source,
-                    "p_metadata": metadata,
-                    "p_template_used": template_used,
-                },
-            ).execute()
+    payload = {
+        'email': email,
+        'industry': industry or 'No especificado',
+        'product': product,
+        'source': source,
+        'metadata': metadata or {},
+        'template_used': template_used,
+        'generated_at': datetime.utcnow().isoformat()
+    }
+    # Remover campos None
+    payload = {k: v for k, v in payload.items() if v is not None}
 
-            guardado_exitoso = True
-
-            # Supabase puede devolver el resultado de la RPC
-            # con un tipado genérico que Pylance no reconoce como dict.
-            if result.data:
-                lead_id = result.data[0]["id"]
-            else:
-                lead_id = "N/A"
-
-            mensaje_guardado = f"Lead guardado con ID: {lead_id}"
-
-            print(f"✅ {mensaje_guardado}")
-
-        except Exception as e:
-            mensaje_guardado = f"Error al guardar: {str(e)}"
-            print(f"❌ {mensaje_guardado}")
-
-    else:
-        if not email:
-            mensaje_guardado = "No se proporcionó email."
-        else:
-            mensaje_guardado = "Supabase no está conectado."
-
-        print(f"⚠️ {mensaje_guardado}")
-
-    return guardado_exitoso, mensaje_guardado
+    try:
+        response = supabase.table('leads').insert(payload, returning='minimal').execute() # type:ignore
+        
+        # Verificar si hay error en la respuesta
+        if hasattr(response, 'error') and response.error: # type:ignore
+            return False, f"Error en Supabase: {response.error}" # type:ignore
+        
+        # Si llegamos aquí, la inserción fue exitosa
+        return True, "Lead guardado exitosamente"
+        
+    except Exception as e:
+        return False, f"Error al guardar: {str(e)}"
 
 
 # Funciona, pero consumo muchos recursos y Render mata el proceso
