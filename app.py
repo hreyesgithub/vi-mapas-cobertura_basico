@@ -11,7 +11,14 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib.units import inch, cm
 from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle
+from reportlab.platypus import Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+import matplotlib.pyplot as plt  # type: ignore opcional, si quieres incluir gráficos
+import io as io_base
+import base64
 from supabase import create_client, Client  # type: ignore
 import logging
 import time
@@ -98,7 +105,6 @@ RF = {
     "GRID_STEP": 8,  # Para evaluación rápida en backend
 }
 
-
 # ============================================================
 # 4. ALGORITMOS DE PROPAGACIÓN Y BRESENHAM (PYTHON)
 # ============================================================
@@ -124,7 +130,6 @@ def bresenham_python(x0, y0, x1, y1):
             cy += sy
     return points
 
-
 def point_to_segment_dist_py(px, py, x1, y1, x2, y2):
     vx = x2 - x1
     vy = y2 - y1
@@ -140,7 +145,6 @@ def point_to_segment_dist_py(px, py, x1, y1, x2, y2):
     proj_y = y1 + t * vy
     return math.hypot(px - proj_x, py - proj_y)
 
-
 def calculate_rssi_py(tx_power, dist_m, wall_count):
     if dist_m < 0.1:
         return tx_power
@@ -152,7 +156,6 @@ def calculate_rssi_py(tx_power, dist_m, wall_count):
         + (wall_count * RF["WALL_LOSS"])
     )
     return round(tx_power - path_loss, 2)
-
 
 # ============================================================
 # NUEVO: DETECTOR DE INTERFERENCIAS
@@ -281,7 +284,6 @@ def diagnosticar_interferencias(respuestas):
         ]
 
     return diagnostico
-
 
 # ============================================================
 # FUNCIONES GENERALES
@@ -484,6 +486,220 @@ def analizar_sombras_nada_mas():
         logger.exception(f"❌ Error crítico en /api/analizar-sombras: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+def generar_pdf_sombras(data, email, industry):
+    """
+    Genera un informe PDF con los resultados del análisis de sombras.
+    data: dict con keys: porcentaje_sombra, puntos_sombra, sugerencias, aps, width, height
+    email, industry: datos del lead.
+    Retorna: objeto BytesIO con el PDF.
+    """
+    import io
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import Table, TableStyle
+    from reportlab.lib.units import cm
+    from datetime import datetime
+
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    page_width, page_height = A4
+    margin = 50
+    y = page_height - margin
+
+    # Calcular metros cuadrados (escala fija: 20m x 12.5m para 800x500)
+    width_px = data.get('width', 800)
+    height_px = data.get('height', 500)
+    metros_ancho = (width_px / 800) * 20
+    metros_alto = (height_px / 500) * 12.5
+    metros_cuadrados = round(metros_ancho * metros_alto, 1)
+
+    # --- Título ---
+    c.setFont("Helvetica-Bold", 18)
+    c.setFillColor(colors.HexColor("#0b132b"))
+    c.drawString(margin, y, "Venezuela Insights - Análisis de Zonas de Sombra")
+    y -= 30
+
+    c.setFont("Helvetica", 10)
+    c.setFillColor(colors.grey)
+    c.drawString(margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    y -= 25
+    c.setFillColor(colors.black)
+
+    # --- Datos del proyecto ---
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, y, "Datos del Proyecto")
+    y -= 20
+    c.setFont("Helvetica", 10)
+    c.drawString(margin, y, f"Correo: {email}")
+    y -= 15
+    c.drawString(margin, y, f"Industria / Giro: {industry}")
+    y -= 15
+    c.drawString(margin, y, f"Dimensiones aproximadas: {metros_ancho:.1f}m x {metros_alto:.1f}m ({metros_cuadrados} m²)")
+    y -= 25
+
+    # --- Resultados ---
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColor(colors.HexColor("#1c2541"))
+    c.drawString(margin, y, "Resultados del Análisis")
+    y -= 20
+    c.setFont("Helvetica", 11)
+    c.drawString(margin, y, f"• Porcentaje de zonas de sombra: {data.get('porcentaje_sombra', 0)}%")
+    y -= 16
+    c.drawString(margin, y, f"• Puntos críticos detectados: {data.get('puntos_sombra', 0)}")
+    y -= 16
+    c.drawString(margin, y, f"• APs utilizados: {len(data.get('aps', []))}")
+    y -= 20
+
+    # --- Recomendaciones ---
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, y, "Recomendaciones")
+    y -= 18
+    c.setFont("Helvetica", 10)
+    sugerencias = data.get('sugerencias', [])
+    if sugerencias:
+        for sug in sugerencias:
+            c.drawString(margin, y, f"• {sug.get('justificacion', '')} (AP en X={sug.get('x', 0)}, Y={sug.get('y', 0)})")
+            y -= 15
+    else:
+        c.drawString(margin, y, "No se detectaron zonas de sombra significativas.")
+        y -= 15
+    y -= 10
+
+    # --- Tarifas estimadas ---
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin, y, "Tarifas Estimadas para Estudio Profesional")
+    y -= 20
+
+    # Tabla de tarifas
+    data_table = [
+        ["Concepto", "Costo (USD)"],
+        ["Site Survey (por m²)", "$2.50"],
+        ["Análisis de espectro", "$150.00"],
+        ["Informe ejecutivo", "$200.00"],
+        ["**Total estimado**", f"**${(metros_cuadrados * 2.5 + 150 + 200):.2f}**"]
+    ]
+    table = Table(data_table, colWidths=[3*cm, 3*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1c2541")),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 8),
+        ('BACKGROUND', (0,1), (-1,-2), colors.HexColor("#f0f0f0")),
+        ('GRID', (0,0), (-1,-1), 1, colors.grey),
+        ('FONTNAME', (0,-1), (-1,-1), 'Helvetica-Bold'),
+    ]))
+    table.wrapOn(c, page_width, page_height)
+    table.drawOn(c, margin, y - 100)
+    y -= 120
+
+    # --- Pie de página ---
+    y = margin
+    c.setFont("Helvetica-Oblique", 8)
+    c.setFillColor(colors.grey)
+    c.drawString(margin, y, "Este informe es una simulación preliminar. Para resultados exactos, solicita un Site Survey profesional.")
+    c.drawRightString(page_width - margin, y, "v1.0 - Venezuela Insights")
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+# ============================================================
+# FUNCIÓN: ANALIZAR ZONAS DE SOMBRA
+# ============================================================
+def realizar_analisis_sombras(aps, walls, width, height):
+    """
+    Analiza la cobertura RF y detecta zonas de sombra (RSSI < -70 dBm).
+    Retorna:
+        - porcentaje_sombra: float
+        - puntos_sombra: int (número de puntos con RSSI < -70)
+        - sugerencias: lista de dict con {'x': int, 'y': int, 'justificacion': str}
+        - mapa_calor: matriz 2D con valores RSSI (opcional, para depuración)
+    """
+    step = RF['GRID_STEP']  # 8 píxeles
+    cols = max(1, width // step)
+    rows = max(1, height // step)
+    
+    # Escala para convertir píxeles a metros (20m x 12.5m)
+    scale_x = 20.0 / width
+    scale_y = 12.5 / height
+    
+    # Matriz de RSSI
+    matrix = []
+    puntos_sombra = 0
+    total_puntos = rows * cols
+    
+    # Para sugerencias, almacenamos las coordenadas de sombra
+    sombras = []
+    
+    for r in range(rows):
+        row = []
+        for c in range(cols):
+            px = c * step + step / 2
+            py = r * step + step / 2
+            real_x = px * scale_x
+            real_y = py * scale_y
+            
+            best_rssi = -100
+            for ap in aps:
+                ap_x = ap['x']
+                ap_y = ap['y']
+                dx = (px - ap_x) * scale_x
+                dy = (py - ap_y) * scale_y
+                dist = math.hypot(dx, dy)
+                wall_count = count_walls_between_py(ap_x, ap_y, px, py, walls)
+                rssi = calculate_rssi_py(RF['TX_POWER'], dist, wall_count)
+                if rssi > best_rssi:
+                    best_rssi = rssi
+            
+            row.append(best_rssi)
+            if best_rssi < RF['RSSI_THRESHOLD']:  # -70 dBm
+                puntos_sombra += 1
+                sombras.append({'x': px, 'y': py, 'rssi': best_rssi})
+        matrix.append(row)
+    
+    porcentaje_sombra = (puntos_sombra / total_puntos) * 100 if total_puntos > 0 else 0
+    
+    # Generar sugerencias de APs adicionales
+    sugerencias = []
+    if porcentaje_sombra > 15:  # Si hay más del 15% de sombra
+        # Encontrar el centro de masa de las sombras
+        if sombras:
+            centro_x = sum(p['x'] for p in sombras) / len(sombras)
+            centro_y = sum(p['y'] for p in sombras) / len(sombras)
+            sugerencias.append({
+                'x': round(centro_x, 1),
+                'y': round(centro_y, 1),
+                'justificacion': f'Centro de zona con sombra ({len(sombras)} puntos)'
+            })
+            
+            # También sugerir un segundo punto si la sombra es extensa
+            if len(sombras) > 50:
+                # Segundo punto en la periferia de la sombra
+                # (simplificado: tomamos el punto más alejado del centro)
+                max_dist = 0
+                lejano = sombras[0]
+                for p in sombras:
+                    d = math.hypot(p['x'] - centro_x, p['y'] - centro_y)
+                    if d > max_dist:
+                        max_dist = d
+                        lejano = p
+                sugerencias.append({
+                    'x': round(lejano['x'], 1),
+                    'y': round(lejano['y'], 1),
+                    'justificacion': 'Punto adicional para cubrir extremo de la sombra'
+                })
+    
+    return {
+        'porcentaje_sombra': round(porcentaje_sombra, 2),
+        'puntos_sombra': puntos_sombra,
+        'sugerencias': sugerencias,
+        'matrix': matrix  # opcional, para depuración
+    }
+
 # ============================================================
 # FUNCIONES MATEMÁTICAS OPTIMIZADAS (Fuera del endpoint)
 # ============================================================
@@ -546,7 +762,6 @@ def evaluate_coverage(ap_positions, width, height, walls):
 
     return (covered / total) * 100 if total > 0 else 0
 
-
 # ============================================================
 # 6. ALGORITMO DE OPTIMIZACIÓN (SIMULATED ANNEALING LIGERO)
 # ============================================================
@@ -588,7 +803,6 @@ def optimize_aps(width, height, num_aps, walls, iterations=150):
     # Convertir a lista de diccionarios para JSON
     return [{"x": x, "y": y} for (x, y) in best_positions]
 
-
 # ============================================================
 # 7. ENDPOINT: /api/optimize
 # ============================================================
@@ -620,7 +834,6 @@ def optimize():
     except Exception as e:
         print(f"Error en /api/optimize: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # ============================================================
 # 8. ENDPOINT: /api/generate_report (CON PDF Y SUPABASE)
@@ -777,7 +990,6 @@ def generate_report():
         print(f"Error en /api/generate_report: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 # ============================================================
 # 9. ENDPOINT DE SALUD (PARA RENDER)
 # ============================================================
@@ -790,7 +1002,6 @@ def health():
             "timestamp": datetime.utcnow().isoformat(),
         }
     )
-
 
 @app.route("/api/diagnosticar-interferencias", methods=["POST"])
 def diagnosticar():
@@ -878,7 +1089,6 @@ def diagnosticar():
     except Exception as e:
         print(f"❌ Error general en /api/diagnosticar-interferencias: {e}")
         return jsonify({"error": str(e)}), 500
-
 
 # ============================================================
 # 10. ENDPOINT: CALCULADORA DE CAPACIDAD
@@ -1050,135 +1260,67 @@ def calcular_capacidad():
         print(f"❌ Error en /api/calcular-capacidad: {e}")
         return jsonify({"error": str(e)}), 500
 
-
 # ============================================================
 # 11. ENDPOINT: ANALIZADOR DE ZONAS DE SOMBRA
 # ============================================================
-@app.route("/api/analizar-sombras", methods=["POST"])
+@app.route('/api/analizar-sombras', methods=['POST'])
 def analizar_sombras():
     """
     Analiza las zonas de sombra (RSSI < -70 dBm) en el mapa de calor.
     Recibe: { aps, walls, width, height, email, industry }
-    Devuelve: { porcentaje_sombra, puntos_sombra, sugerencias }
+    Devuelve: { porcentaje_sombra, puntos_sombra, sugerencias, guardado, mensaje_guardado }
     """
     try:
-        start_time = time.time()
-        logger.info("Iniciando análisis de sombras RF...")
-
         data = request.get_json()
         if not data:
-            logger.warning("Petición rechazada: Faltan datos en el body.")
             return jsonify({'error': 'Faltan datos'}), 400
 
         aps = data.get('aps', [])
         walls = data.get('walls', [])
         width = data.get('width', 800)
         height = data.get('height', 500)
-
-        logger.info(f"Procesando {len(aps)} APs y {len(walls)} paredes...")
+        email = data.get('email')
+        industry = data.get('industry', 'No especificado')
 
         if not aps:
             return jsonify({'error': 'No hay puntos de acceso configurados'}), 400
 
-        # ============================================================
-        # Generar matriz de RSSI
-        # ============================================================
-        step = 6
-        cols = int(width / step)
-        rows = int(height / step)
-        scale_x = 20 / width
-        scale_y = 12.5 / height
+        # === LLAMADA A LA FUNCIÓN QUE YA TIENES ===
+        resultado = realizar_analisis_sombras(aps, walls, width, height)
 
-        zonas_sombra = []
-        total_puntos = rows * cols
-        puntos_sombra = 0
-
-        for r in range(rows):
-            for c in range(cols):
-                px = c * step + step / 2
-                py = r * step + step / 2
-                best_rssi = -100
-                
-                for ap in aps:
-                    dx = (px - ap['x']) * scale_x
-                    dy = (py - ap['y']) * scale_y
-                    dist = math.hypot(dx, dy)
-                    
-                    # Llamada a la nueva función optimizada
-                    wall_count = count_walls_between_py(ap['x'], ap['y'], px, py, walls)
-                    
-                    rssi = calculate_rssi_py(20, dist, wall_count)
-                    if rssi > best_rssi:
-                        best_rssi = rssi
-                        
-                if best_rssi < -70:
-                    puntos_sombra += 1
-                    zonas_sombra.append({'x': px, 'y': py, 'rssi': best_rssi})
-
-        porcentaje_sombra = (puntos_sombra / total_puntos) * 100
-
-        # ============================================================
-        # Generar sugerencias de ubicación de APs
-        # ============================================================
-        sugerencias = []
-        if porcentaje_sombra > 20:
-            if zonas_sombra:
-                centro_x = sum(p['x'] for p in zonas_sombra) / len(zonas_sombra)
-                centro_y = sum(p['y'] for p in zonas_sombra) / len(zonas_sombra)
-                sugerencias.append({
-                    'x': round(centro_x, 1),
-                    'y': round(centro_y, 1),
-                    'justificacion': 'Centro de la zona con mayor concentración de sombras'
-                })
-                if len(zonas_sombra) > 10:
-                    lejano = max(zonas_sombra, key=lambda p: math.hypot(p['x'] - centro_x, p['y'] - centro_y))
-                    sugerencias.append({
-                        'x': round(lejano['x'], 1),
-                        'y': round(lejano['y'], 1),
-                        'justificacion': 'Zona de sombra extrema'
-                    })
-
-        # ============================================================
-        # Guardar lead
-        # ============================================================
-        email = data.get('email')
+        # === GUARDAR LEAD EN SUPABASE (si hay email) ===
+        guardado = False
+        msg = "No se proporcionó email (opcional)"
         if email:
             metadata = {
                 'aps': aps,
-                'porcentaje_sombra': porcentaje_sombra,
-                'puntos_sombra': puntos_sombra,
-                'sugerencias': sugerencias
+                'walls': walls,
+                'width': width,
+                'height': height,
+                'porcentaje_sombra': resultado['porcentaje_sombra'],
+                'puntos_sombra': resultado['puntos_sombra'],
+                'sugerencias': resultado['sugerencias']
             }
             guardado, msg = guardar_lead_en_supabase(
                 email=email,
-                industry=data.get('industry', 'No especificado'),
+                industry=industry,
                 product='shadow_analyzer',
                 source='web',
                 metadata=metadata,
                 template_used='shadow_analyzer'
             )
-        else:
-            guardado = False
-            msg = "No se proporcionó email."
 
-        elapsed_time = time.time() - start_time
-        logger.info(f"Análisis completado en {elapsed_time:.2f} segundos. Puntos de sombra: {puntos_sombra}.")
-
-        # ============================================================
-        # Respuesta JSON
-        # ============================================================
+        # === RESPUESTA ===
         return jsonify({
-            'porcentaje_sombra': round(porcentaje_sombra, 2),
-            'puntos_sombra': puntos_sombra,
-            'total_puntos': total_puntos,
-            'sugerencias': sugerencias,
-            'zonas_sombra': zonas_sombra[:200],
+            'porcentaje_sombra': resultado['porcentaje_sombra'],
+            'puntos_sombra': resultado['puntos_sombra'],
+            'sugerencias': resultado['sugerencias'],
             'guardado': guardado,
             'mensaje_guardado': msg
         })
 
     except Exception as e:
-        logger.exception(f"❌ Error crítico en /api/analizar-sombras: {str(e)}")
+        print(f"❌ Error en /api/analizar-sombras: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================
@@ -1375,6 +1517,45 @@ def generar_presupuesto():
         print(f"❌ Error en /api/generar-presupuesto: {e}")
         return jsonify({'error': str(e)}), 500
 
+# ============================================================
+# ENDPOINT: /api/generar-reporte-sombras (PDF)
+# ============================================================
+@app.route('/api/generar-reporte-sombras', methods=['POST'])
+def generar_reporte_sombras():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        email = data.get('email', '').strip()
+        industry = data.get('industry', 'No especificado')
+
+        if not email or '@' not in email:
+            return jsonify({'error': 'Correo inválido'}), 400
+
+        # Preparar datos para el PDF
+        pdf_data = {
+            'porcentaje_sombra': data.get('porcentaje_sombra', 0),
+            'puntos_sombra': data.get('puntos_sombra', 0),
+            'sugerencias': data.get('sugerencias', []),
+            'aps': data.get('aps', []),
+            'width': data.get('width', 800),
+            'height': data.get('height', 500)
+        }
+
+        pdf_buffer = generar_pdf_sombras(pdf_data, email, industry)
+
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f"informe_sombras_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"❌ Error en /api/generar-reporte-sombras: {e}")
+        return jsonify({'error': str(e)}), 500
+    
 # ============================================================
 # ARRANQUE
 # ============================================================
