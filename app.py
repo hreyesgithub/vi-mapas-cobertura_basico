@@ -4,7 +4,7 @@ import random
 import io
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # FLASK
 from flask import Flask, request, jsonify, send_file
@@ -34,7 +34,7 @@ import logging
 
 # GEMINI FLASH
 import google.generativeai as genai
-from google.generativeai import GenerativeModel # type: ignore
+from google.generativeai import GenerativeModel  # type: ignore
 
 # Configurar el logger al inicio de tu app.py
 logging.basicConfig(
@@ -74,6 +74,7 @@ FACTORES_URGENCIA = {
     "express": 1.3,  # 30% más por prioridad
 }
 
+
 # ============================================================
 # CONFIGURACIÓN GEMINI
 # ============================================================
@@ -91,13 +92,13 @@ def init_gemini_model():
         if callable(configure):
             configure(api_key=api_key)
         elif hasattr(genai, "Client"):
-            genai.Client(api_key=api_key) # type: ignore
+            genai.Client(api_key=api_key)  # type: ignore
     except Exception as exc:  # pragma: no cover - log y seguir sin bloquear la app
         logger.warning(f"No se pudo configurar Gemini: {exc}")
         return None
 
     try:
-        return genai.GenerativeModel("gemini-1.5-flash") # type: ignore
+        return genai.GenerativeModel("gemini-1.5-flash")  # type: ignore
     except Exception as exc:  # pragma: no cover
         logger.warning(f"No se pudo crear el modelo de Gemini: {exc}")
         return None
@@ -334,15 +335,18 @@ def diagnosticar_interferencias(respuestas):
 
     return diagnostico
 
+
 # ============================================================
 # GEMINI FLASH
 # ============================================================
-def generar_propuesta_gemini(nombre_cliente, nombre_proyecto, servicios, detalles, tono):
+def generar_propuesta_gemini(
+    nombre_cliente, nombre_proyecto, servicios, detalles, tono
+    ):
     """
     Genera una propuesta comercial usando Gemini Flash.
     Retorna el texto generado.
     """
-    if not os.environ.get('GEMINI_API_KEY'):
+    if not os.environ.get("GEMINI_API_KEY"):
         raise ValueError("GEMINI_API_KEY no configurada")
 
     prompt = f"""
@@ -367,10 +371,11 @@ def generar_propuesta_gemini(nombre_cliente, nombre_proyecto, servicios, detalle
     """
 
     try:
-        response = model.generate_content(prompt) # type: ignore
+        response = model.generate_content(prompt)  # type: ignore
         return response.text.strip()
     except Exception as e:
         raise Exception(f"Error al llamar a Gemini: {str(e)}")
+
 
 # ============================================================
 # FUNCIONES GENERALES
@@ -423,6 +428,7 @@ def guardar_lead_en_supabase(email, industry, product, source, metadata, templat
         print(f"⚠️ {mensaje_guardado}")
 
     return guardado_exitoso, mensaje_guardado
+
 
 # Funciona, pero consumo muchos recursos y Render mata el proceso
 def analizar_sombras_nada_mas():
@@ -717,27 +723,54 @@ def generar_pdf_sombras(data, email, industry):
     buffer.seek(0)
     return buffer
 
+
+def verificar_creditos(email):
+    """
+    Verifica cuántas generaciones ha hecho un email en las últimas 24h.
+    Retorna (tiene_creditos, usos_hoy, limite)
+    """
+    LIMITE_DIARIO = 15
+    try:
+        # Buscar usos de este email en las últimas 24 horas
+        hace_24h = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        result = (
+            supabase.table("leads")
+            .select("id")
+            .eq("email", email)
+            .eq("product", "proposal_generator")
+            .gte("generated_at", hace_24h)
+            .execute()
+        )
+
+        usos_hoy = len(result.data) if result.data else 0
+        tiene_creditos = usos_hoy < LIMITE_DIARIO
+
+        return tiene_creditos, usos_hoy, LIMITE_DIARIO
+    except Exception as e:
+        print(f"Error verificando créditos: {e}")
+        # En caso de error, permitir generación (fallback seguro)
+        return True, 0, LIMITE_DIARIO
+
+
 # ============================================================
 # GENERADOR DE PROPUESTAS
 # ============================================================
-def generar_propuesta_template(nombre_cliente, nombre_proyecto, servicios, detalles, tono):
+def generar_propuesta_template(
+    nombre_cliente, nombre_proyecto, servicios, detalles, tono
+    ):
     """Genera una propuesta profesional usando plantillas predefinidas."""
-    
+
     # Mapeo de tonos
-    saludos = {
-        'formal': 'Estimado(a)',
-        'semiformal': 'Hola',
-        'informal': '¡Hola!'
-    }
+    saludos = {"formal": "Estimado(a)", "semiformal": "Hola", "informal": "¡Hola!"}
     despedidas = {
-        'formal': 'Quedamos a su disposición para cualquier consulta.',
-        'semiformal': 'Quedamos atentos a sus comentarios.',
-        'informal': '¡Esperamos trabajar contigo pronto!'
+        "formal": "Quedamos a su disposición para cualquier consulta.",
+        "semiformal": "Quedamos atentos a sus comentarios.",
+        "informal": "¡Esperamos trabajar contigo pronto!",
     }
-    
-    saludo = saludos.get(tono, 'Estimado(a)')
-    despedida = despedidas.get(tono, 'Quedamos a su disposición.')
-    
+
+    saludo = saludos.get(tono, "Estimado(a)")
+    despedida = despedidas.get(tono, "Quedamos a su disposición.")
+
     # Plantilla estructurada
     propuesta = f"""
     {saludo} {nombre_cliente},
@@ -784,6 +817,7 @@ def generar_propuesta_template(nombre_cliente, nombre_proyecto, servicios, detal
     Equipo de Consultoría Tecnológica
     """
     return propuesta.strip()
+
 
 # ============================================================
 # FUNCIÓN: ANALIZAR ZONAS DE SOMBRA
@@ -988,12 +1022,14 @@ def optimize_aps(width, height, num_aps, walls, iterations=150):
     # Convertir a lista de diccionarios para JSON
     return [{"x": x, "y": y} for (x, y) in best_positions]
 
+
 # ============================================================
 # ENDPOINT: /health
 # ============================================================
 @app.route("/health", methods=["GET"])
 def health_check():
     return {"status": "ok"}, 200
+
 
 # ============================================================
 # 7. ENDPOINT: /api/optimize
@@ -1782,62 +1818,55 @@ def generar_reporte_sombras():
         print(f"❌ Error en /api/generar-reporte-sombras: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # ============================================================
 # ENDPOINT: /api/generar-propuesta
 # ============================================================
-@app.route('/api/generar-propuesta', methods=['POST'])
+@app.route("/api/generar-propuesta", methods=["POST"])
 def generar_propuesta():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
+            return jsonify({"error": "Faltan datos"}), 400
 
-        nombre_cliente = data.get('nombre_cliente', '').strip()
-        nombre_proyecto = data.get('nombre_proyecto', '').strip()
-        servicios = data.get('servicios', '').strip()
-        detalles = data.get('detalles', '').strip()
-        tono = data.get('tono', 'semiformal')
+         # Obtener email e industry (ahora obligatorios)
+        email = data.get('email', '').strip()
+        industry = data.get('industry', 'No especificado')
+
+        if not email or '@' not in email:
+            return jsonify({'error': 'Correo obligatorio para generar propuestas'}), 400
+
+         # Verificar créditos disponibles
+        tiene_creditos, usos_hoy, limite = verificar_creditos(email)
+        if not tiene_creditos:
+            return jsonify({
+                'error': f'Has alcanzado el límite diario de {limite} propuestas. Vuelve mañana.'
+            }), 429  # Too Many Requests
+
+        nombre_cliente = data.get("nombre_cliente", "").strip()
+        nombre_proyecto = data.get("nombre_proyecto", "").strip()
+        servicios = data.get("servicios", "").strip()
+        detalles = data.get("detalles", "").strip()
+        tono = data.get("tono", "semiformal")
 
         if not nombre_cliente or not nombre_proyecto or not servicios:
-            return jsonify({'error': 'Faltan campos obligatorios'}), 400
+            return jsonify({"error": "Faltan campos obligatorios"}), 400
 
         # Generar propuesta con plantilla
         propuesta = generar_propuesta_template(
             nombre_cliente, nombre_proyecto, servicios, detalles, tono
         )
 
-        return jsonify({
-            'propuesta': propuesta,
-            'titulo': f'Propuesta para {nombre_proyecto} - {nombre_cliente}',
-        })
-
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/generar-pdf-propuesta', methods=['POST'])
-def generar_pdf_propuesta():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
-
-        email = data.get('email', '').strip()
-        industry = data.get('industry', 'No especificado')
-        propuesta_texto = data.get('propuesta', '')
-        titulo = data.get('titulo', 'Propuesta Comercial')
-
-        if not email or '@' not in email:
-            return jsonify({'error': 'Correo inválido'}), 400
-        if not propuesta_texto:
-            return jsonify({'error': 'No hay propuesta para generar el PDF'}), 400
-
-        # Guardar lead en Supabase
+        # Guardar lead en Supabase (registrar el uso)
         metadata = {
-            'titulo': titulo,
-            'industry': industry,
-            'longitud': len(propuesta_texto)
+            'nombre_cliente': nombre_cliente,
+            'nombre_proyecto': nombre_proyecto,
+            'servicios': servicios,
+            'tono': tono,
+            'usos_hoy': usos_hoy + 1,
+            'limite_diario': limite
         }
+
         guardado, msg = guardar_lead_en_supabase(
             email=email,
             industry=industry,
@@ -1845,6 +1874,50 @@ def generar_pdf_propuesta():
             source='web',
             metadata=metadata,
             template_used='proposal_generator'
+        )
+
+        return jsonify(
+            {
+                "propuesta": propuesta,
+                "titulo": f"Propuesta para {nombre_proyecto} - {nombre_cliente}",
+            }
+        )
+
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/generar-pdf-propuesta", methods=["POST"])
+def generar_pdf_propuesta():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Faltan datos"}), 400
+
+        email = data.get("email", "").strip()
+        industry = data.get("industry", "No especificado")
+        propuesta_texto = data.get("propuesta", "")
+        titulo = data.get("titulo", "Propuesta Comercial")
+
+        if not email or "@" not in email:
+            return jsonify({"error": "Correo inválido"}), 400
+        if not propuesta_texto:
+            return jsonify({"error": "No hay propuesta para generar el PDF"}), 400
+
+        # Guardar lead en Supabase
+        metadata = {
+            "titulo": titulo,
+            "industry": industry,
+            "longitud": len(propuesta_texto),
+        }
+        guardado, msg = guardar_lead_en_supabase(
+            email=email,
+            industry=industry,
+            product="proposal_generator",
+            source="web",
+            metadata=metadata,
+            template_used="proposal_generator",
         )
 
         # Generar PDF
@@ -1869,11 +1942,13 @@ def generar_pdf_propuesta():
 
         # Cuerpo (con wrap básico)
         c.setFont("Helvetica", 11)
-        lineas = propuesta_texto.split('\n')
+        lineas = propuesta_texto.split("\n")
         for linea in lineas:
-            if linea.strip().startswith('**') or linea.strip().startswith('#'):
+            if linea.strip().startswith("**") or linea.strip().startswith("#"):
                 c.setFont("Helvetica-Bold", 12)
-                c.drawString(margin, y, linea.strip().replace('**', '').replace('#', ''))
+                c.drawString(
+                    margin, y, linea.strip().replace("**", "").replace("#", "")
+                )
                 c.setFont("Helvetica", 11)
             else:
                 c.drawString(margin, y, linea)
@@ -1891,13 +1966,14 @@ def generar_pdf_propuesta():
             buffer,
             as_attachment=True,
             download_name=f"propuesta_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-            mimetype='application/pdf'
+            mimetype="application/pdf",
         )
 
     except Exception as e:
         print(f"❌ Error en PDF: {e}")
-        return jsonify({'error': str(e)}), 500
-    
+        return jsonify({"error": str(e)}), 500
+
+
 # ============================================================
 # ARRANQUE
 # ============================================================
