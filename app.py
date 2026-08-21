@@ -23,6 +23,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ============================================================
+# CONFIGURACIÓN DE TARIFAS Y FACTORES PARA PRESUPUESTOS
+# ============================================================
+TARIFAS = {
+    'site_survey_por_m2': 2.50,      # $/m²
+    'analisis_espectro': 150.00,      # $ por sesión
+    'diseno_red': 200.00,             # $ por diseño
+    'instalacion_por_ap': 80.00,      # $ por AP instalado
+    'costo_ap_wifi5': 180.00,         # $ por AP Wi-Fi 5
+    'costo_ap_wifi6': 280.00,         # $ por AP Wi-Fi 6
+    'costo_switch_poe': 350.00,       # $ por switch PoE
+    'costo_cable_m': 1.50,            # $ por metro de cable CAT6
+}
+
+FACTORES_CONSTRUCCION = {
+    'concreto': 1.3,   # Mayor dificultad
+    'drywall': 1.0,    # Estándar
+    'vidrio': 1.1,     # Reflexiones
+    'mixto': 1.2,      # Combinación
+}
+
+FACTORES_ZONA = {
+    'centro': 1.0,     # Tarifa base
+    'periferia': 0.85, # Menor costo
+    'remota': 1.2,     # Mayor costo por desplazamiento
+}
+
+FACTORES_URGENCIA = {
+    'normal': 1.0,
+    'express': 1.3,    # 30% más por prioridad
+}
+
+# ============================================================
 # 1. CONFIGURACIÓN DE SUPABASE
 # ============================================================
 # Si usas variables de entorno en Render, descomenta estas líneas:
@@ -1152,187 +1184,196 @@ def analizar_sombras():
 # ============================================================
 # 12. PLANIFICADOR DE PRESUPUESTO
 # ============================================================
-@app.route("/api/generar-presupuesto", methods=["POST"])
+@app.route('/api/generar-presupuesto', methods=['POST'])
 def generar_presupuesto():
-    """
-    Calcula un presupuesto estimado para un estudio de RF basado en:
-    - Metros cuadrados
-    - Tipo de entorno
-    - Número de APs actuales
-    - Problemas específicos
-    Devuelve: Desglose de costos, total, recomendaciones
-    """
     try:
         data = request.get_json()
         if not data:
-            return jsonify({"error": "Faltan datos"}), 400
+            return jsonify({'error': 'Faltan datos'}), 400
 
-        # Parámetros de entrada
-        metros_cuadrados = int(data.get("metros_cuadrados", 0))
-        tipo_entorno = data.get("tipo_entorno", "oficina")
-        aps_actuales = int(data.get("aps_actuales", 0))
-        problemas = data.get("problemas", [])  # Lista de strings
-        email = data.get("email")
-        industry = data.get("industry", "No especificado")
+        # ============================================================
+        # 1. PARÁMETROS DE ENTRADA
+        # ============================================================
+        tipo_proyecto = data.get('tipo_proyecto', 'greenfield')  # greenfield | brownfield
+        metros_cuadrados = float(data.get('metros_cuadrados', 0))
+        num_pisos = int(data.get('num_pisos', 1))
+        tipo_construccion = data.get('tipo_construccion', 'mixto')
+        zona = data.get('zona', 'centro')
+        urgencia = data.get('urgencia', 'normal')
+        usuarios = int(data.get('usuarios', 0))
+        aplicaciones = data.get('aplicaciones', 'mixto')  # streaming, voz, datos, mixto
+        presupuesto_cliente = float(data.get('presupuesto', 0))  # 0 = sin límite
+
+        email = data.get('email')
+        industry = data.get('industry', 'No especificado')
 
         # Validaciones
         if metros_cuadrados <= 0:
-            return jsonify({"error": "Los metros cuadrados deben ser mayor a 0"}), 400
+            return jsonify({'error': 'Los metros cuadrados deben ser mayores a 0'}), 400
 
         # ============================================================
-        # CÁLCULO DE PRESUPUESTO
+        # 2. CÁLCULO DE APs NECESARIOS
         # ============================================================
+        # Estimación: 1 AP por cada 100-150 m² en interiores
+        if tipo_construccion == 'concreto':
+            cobertura_por_ap = 80  # m² por AP (señal más atenuada)
+        elif tipo_construccion == 'vidrio':
+            cobertura_por_ap = 120
+        else:
+            cobertura_por_ap = 100
 
-        # Tarifas base (ejemplo - ajusta según tu negocio)
-        tarifas = {
-            "site_survey_por_m2": 2.50,  # $/m²
-            "analisis_espectro_fijo": 150.00,  # $ por sesión
-            "informe_ejecutivo": 200.00,  # $ por informe
-            "consultoria_por_hora": 85.00,  # $/hora
-        }
+        # Ajuste por número de pisos
+        aps_por_piso = max(1, int(metros_cuadrados / cobertura_por_ap))
+        aps_totales = aps_por_piso * num_pisos
 
-        # Factores por tipo de entorno
-        factores_entorno = {
-            "oficina": 1.0,
-            "centro_comercial": 1.4,
-            "hospital": 1.6,
-            "hotel": 1.3,
-            "educacion": 1.2,
-            "logistica": 1.3,
-            "auditorio": 1.5,
-            "otro": 1.2,
-        }
-        factor_entorno = factores_entorno.get(tipo_entorno, 1.0)
-
-        # Factor por problemas específicos
-        factor_problemas = 1.0
-        if "cobertura" in problemas:
-            factor_problemas += 0.1
-        if "interferencia" in problemas:
-            factor_problemas += 0.2
-        if "capacidad" in problemas:
-            factor_problemas += 0.15
-        if "seguridad" in problemas:
-            factor_problemas += 0.1
-
-        # Cálculo de costos
-        costo_site_survey = (
-            metros_cuadrados * tarifas["site_survey_por_m2"] * factor_entorno
-        )
-        costo_analisis_espectro = tarifas["analisis_espectro_fijo"] * (
-            1 + (0.2 if "interferencia" in problemas else 0)
-        )
-        costo_informe = tarifas["informe_ejecutivo"]
-        costo_consultoria = tarifas["consultoria_por_hora"] * (
-            2 if metros_cuadrados > 500 else 1
-        )  # Más horas para espacios grandes
-
-        # Subtotal
-        subtotal = (
-            costo_site_survey
-            + costo_analisis_espectro
-            + costo_informe
-            + costo_consultoria
-        )
-
-        # Descuentos por volumen
-        descuento = 0
-        if metros_cuadrados > 1000:
-            descuento = 0.10  # 10% descuento
-        elif metros_cuadrados > 500:
-            descuento = 0.05  # 5% descuento
-
-        total = subtotal * (1 - descuento)
+        # Ajuste por densidad de usuarios (si se proporciona)
+        if usuarios > 0:
+            # Factor: 1 AP por cada 20-25 usuarios en oficina típica
+            aps_por_usuario = max(1, int(usuarios / 25))
+            aps_totales = max(aps_totales, aps_por_usuario)
 
         # ============================================================
-        # RECOMENDACIONES
+        # 3. CÁLCULO DE COSTOS
         # ============================================================
-        recomendaciones = []
+        # 3.1. Servicios profesionales
+        costo_site_survey = metros_cuadrados * TARIFAS['site_survey_por_m2'] * FACTORES_CONSTRUCCION[tipo_construccion]
+        costo_analisis_espectro = TARIFAS['analisis_espectro'] if tipo_proyecto == 'brownfield' else TARIFAS['analisis_espectro'] * 0.5
+        costo_diseno_red = TARIFAS['diseno_red'] * (1 + (num_pisos - 1) * 0.3)
 
-        if metros_cuadrados > 500:
-            recomendaciones.append(
-                "Espacio grande (>500m²). Recomendamos un site survey detallado con múltiples APs."
-            )
-        if "interferencia" in problemas:
-            recomendaciones.append(
-                "Se detectó problema de interferencia. Incluye análisis de espectro con equipo profesional."
-            )
-        if "capacidad" in problemas:
-            recomendaciones.append(
-                "Problema de capacidad. Se recomienda estudio de densidad de usuarios y planificación de capacidad."
-            )
-        if aps_actuales == 0:
-            recomendaciones.append(
-                "No hay APs instalados. Se recomienda diseño completo de red desde cero."
-            )
+        # 3.2. Equipamiento (solo para greenfield o si se solicita)
+        if tipo_proyecto == 'greenfield':
+            # Sugerir Wi-Fi 6 si hay más de 50 usuarios o presupuesto alto
+            if usuarios > 50 or presupuesto_cliente > 2000:
+                wifi_version = 'wifi6'
+                costo_ap = TARIFAS['costo_ap_wifi6']
+            else:
+                wifi_version = 'wifi5'
+                costo_ap = TARIFAS['costo_ap_wifi5']
 
-        if tipo_entorno in ["hospital", "centro_comercial"]:
-            recomendaciones.append(
-                f"Entorno {tipo_entorno.replace('_', ' ')} requiere planificación especial por normativas y alta densidad."
-            )
+            costo_equipos_ap = aps_totales * costo_ap
+            # Switches PoE: 1 switch cada 4-6 APs
+            num_switches = max(1, int(aps_totales / 5))
+            costo_switches = num_switches * TARIFAS['costo_switch_poe']
+            # Cableado: estimación de 30m por AP (incluye subida y bajada)
+            costo_cableado = aps_totales * 30 * TARIFAS['costo_cable_m']
+            costo_equipos = costo_equipos_ap + costo_switches + costo_cableado
+        else:
+            wifi_version = 'wifi5'  # No se recomiendan equipos nuevos por defecto
+            costo_equipos = 0
+
+        # 3.3. Instalación
+        costo_instalacion = aps_totales * TARIFAS['instalacion_por_ap']
+
+        # 3.4. Aplicar factores externos
+        factor_zona = FACTORES_ZONA[zona]
+        factor_urgencia = FACTORES_URGENCIA[urgencia]
+
+        subtotal = (costo_site_survey + costo_analisis_espectro + costo_diseno_red +
+                    costo_equipos + costo_instalacion)
+
+        # Aplicar factores
+        subtotal_ajustado = subtotal * factor_zona * factor_urgencia
 
         # ============================================================
-        # GUARDAR LEAD (usando la función auxiliar)
+        # 4. APLICAR LÍMITE DE PRESUPUESTO DEL CLIENTE
+        # ============================================================
+        if presupuesto_cliente > 0 and subtotal_ajustado > presupuesto_cliente:
+            # Ajustar recomendaciones para ajustarse al presupuesto
+            recomendacion_presupuesto = (
+                f"El presupuesto estimado (${subtotal_ajustado:,.2f}) excede tu límite (${presupuesto_cliente:,.2f}). "
+                "Considera reducir el número de APs, usar equipos Wi-Fi 5 o realizar el proyecto por fases."
+            )
+            # Reducir APs proporcionalmente
+            factor_ajuste = presupuesto_cliente / subtotal_ajustado
+            aps_optimizados = max(1, int(aps_totales * factor_ajuste))
+            # Recalcular con APs reducidos (simplificado)
+            subtotal_ajustado = presupuesto_cliente * 0.95  # dejar 5% de margen
+        else:
+            recomendacion_presupuesto = "El presupuesto estimado se encuentra dentro de tu límite establecido."
+            aps_optimizados = aps_totales
+
+        # ============================================================
+        # 5. GENERAR RECOMENDACIONES
+        # ============================================================
+        recomendaciones = [
+            f"Se recomiendan {aps_optimizados} puntos de acceso para una cobertura óptima.",
+            f"Tipo de construcción: {tipo_construccion}. Ajuste aplicado: {FACTORES_CONSTRUCCION[tipo_construccion]}x."
+        ]
+
+        if tipo_proyecto == 'greenfield':
+            recomendaciones.append(f"Tecnología sugerida: {wifi_version.upper()}.")
+        else:
+            recomendaciones.append("Para optimización, se recomienda un site survey detallado y análisis de espectro.")
+
+        if zona == 'remota':
+            recomendaciones.append("Zona remota: considera costos adicionales de logística y desplazamiento.")
+
+        # ============================================================
+        # 6. GUARDAR EN SUPABASE (usando la función auxiliar)
         # ============================================================
         guardado_exitoso = False
         mensaje_guardado = ""
 
         if email:
             metadata = {
-                "metros_cuadrados": metros_cuadrados,
-                "tipo_entorno": tipo_entorno,
-                "aps_actuales": aps_actuales,
-                "problemas": problemas,
-                "costo_site_survey": round(costo_site_survey, 2),
-                "costo_analisis_espectro": round(costo_analisis_espectro, 2),
-                "costo_informe": round(costo_informe, 2),
-                "costo_consultoria": round(costo_consultoria, 2),
-                "subtotal": round(subtotal, 2),
-                "descuento": round(descuento * 100, 1),
-                "total": round(total, 2),
-                "recomendaciones": recomendaciones,
+                'tipo_proyecto': tipo_proyecto,
+                'metros_cuadrados': metros_cuadrados,
+                'num_pisos': num_pisos,
+                'tipo_construccion': tipo_construccion,
+                'zona': zona,
+                'urgencia': urgencia,
+                'usuarios': usuarios,
+                'aplicaciones': aplicaciones,
+                'aps_calculados': aps_optimizados,
+                'presupuesto_cliente': presupuesto_cliente,
+                'costo_site_survey': round(costo_site_survey, 2),
+                'costo_analisis_espectro': round(costo_analisis_espectro, 2),
+                'costo_diseno_red': round(costo_diseno_red, 2),
+                'costo_equipos': round(costo_equipos, 2),
+                'costo_instalacion': round(costo_instalacion, 2),
+                'total_estimado': round(subtotal_ajustado, 2),
+                'recomendaciones': recomendaciones,
+                'recomendacion_presupuesto': recomendacion_presupuesto
             }
+
             guardado_exitoso, mensaje_guardado = guardar_lead_en_supabase(
                 email=email,
                 industry=industry,
-                product="budget_proposal",
-                source="web",
+                product='budget_proposal',
+                source='web',
                 metadata=metadata,
-                template_used="budget_proposal",
+                template_used='budget_proposal'
             )
-        else:
-            mensaje_guardado = "No se proporcionó email."
 
         # ============================================================
-        # RESPUESTA
+        # 7. RESPUESTA
         # ============================================================
-        return jsonify(
-            {
-                "presupuesto": {
-                    "costo_site_survey": round(costo_site_survey, 2),
-                    "costo_analisis_espectro": round(costo_analisis_espectro, 2),
-                    "costo_informe": round(costo_informe, 2),
-                    "costo_consultoria": round(costo_consultoria, 2),
-                    "subtotal": round(subtotal, 2),
-                    "descuento": round(descuento * 100, 1),
-                    "total": round(total, 2),
-                },
-                "detalles": {
-                    "metros_cuadrados": metros_cuadrados,
-                    "tipo_entorno": tipo_entorno,
-                    "aps_actuales": aps_actuales,
-                    "problemas": problemas,
-                },
-                "recomendaciones": recomendaciones,
-                "guardado": guardado_exitoso,
-                "mensaje_guardado": mensaje_guardado,
-            }
-        )
+        return jsonify({
+            'presupuesto': {
+                'costo_site_survey': round(costo_site_survey, 2),
+                'costo_analisis_espectro': round(costo_analisis_espectro, 2),
+                'costo_diseno_red': round(costo_diseno_red, 2),
+                'costo_equipos': round(costo_equipos, 2),
+                'costo_instalacion': round(costo_instalacion, 2),
+                'subtotal': round(subtotal, 2),
+                'total_estimado': round(subtotal_ajustado, 2),
+                'factor_zona': factor_zona,
+                'factor_urgencia': factor_urgencia
+            },
+            'detalles': {
+                'aps_recomendados': aps_optimizados,
+                'tipo_proyecto': tipo_proyecto,
+                'wifi_version': wifi_version if tipo_proyecto == 'greenfield' else 'no_aplica'
+            },
+            'recomendaciones': recomendaciones,
+            'recomendacion_presupuesto': recomendacion_presupuesto,
+            'guardado': guardado_exitoso,
+            'mensaje_guardado': mensaje_guardado
+        })
 
     except Exception as e:
         print(f"❌ Error en /api/generar-presupuesto: {e}")
-        return jsonify({"error": str(e)}), 500
-
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================
 # ARRANQUE
