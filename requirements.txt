@@ -2,6 +2,7 @@ flask
 flask-cors
 reportlab
 gunicorn
+matplotlib==3.10.9
 annotated-types==0.7.0
 anyio==3.7.1
 certifi==2026.6.17
