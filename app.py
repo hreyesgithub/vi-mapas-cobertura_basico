@@ -921,6 +921,12 @@ def optimize_aps(width, height, num_aps, walls, iterations=150):
     # Convertir a lista de diccionarios para JSON
     return [{"x": x, "y": y} for (x, y) in best_positions]
 
+# ============================================================
+# ENDPOINT: /health
+# ============================================================
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 # ============================================================
 # 7. ENDPOINT: /api/optimize
