@@ -3,6 +3,7 @@ import math
 import random
 import io
 import json
+import requests
 from datetime import datetime
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -214,6 +215,65 @@ def diagnosticar_interferencias(respuestas):
         diagnostico["canales_sugeridos"] = ["Cualquier canal libre (usa herramienta de escaneo)"]
     
     return diagnostico
+
+# ============================================================
+# FUNCIONES GENERALES
+# ============================================================
+def guardar_lead_en_supabase(
+        email,
+        industry,
+        product,
+        source,
+        metadata,
+        template_used
+    ):
+    """
+    Guarda un lead en Supabase usando la función RPC 'insertar_lead'.
+    Devuelve: (guardado_exitoso, mensaje_guardado)
+    """
+    guardado_exitoso = False
+    mensaje_guardado = ""
+
+    if email and supabase:
+        try:
+            result = supabase.rpc(
+                'insertar_lead',
+                {
+                    'p_email': email,
+                    'p_industry': industry,
+                    'p_product': product,
+                    'p_source': source,
+                    'p_metadata': metadata,
+                    'p_template_used': template_used
+                }
+            ).execute()
+
+            guardado_exitoso = True
+
+            # Supabase puede devolver el resultado de la RPC
+            # con un tipado genérico que Pylance no reconoce como dict.
+            if result.data:
+                lead_id = result.data[0]['id']
+            else:
+                lead_id = 'N/A'
+
+            mensaje_guardado = f"Lead guardado con ID: {lead_id}"
+
+            print(f"✅ {mensaje_guardado}")
+
+        except Exception as e:
+            mensaje_guardado = f"Error al guardar: {str(e)}"
+            print(f"❌ {mensaje_guardado}")
+
+    else:
+        if not email:
+            mensaje_guardado = "No se proporcionó email."
+        else:
+            mensaje_guardado = "Supabase no está conectado."
+
+        print(f"⚠️ {mensaje_guardado}")
+
+    return guardado_exitoso, mensaje_guardado
 
 # ============================================================
 # 5. EVALUADOR DE COBERTURA PARA OPTIMIZACIÓN
@@ -555,7 +615,7 @@ def diagnosticar():
         return jsonify({'error': str(e)}), 500
 
 # ============================================================
-# NUEVO ENDPOINT: CALCULADORA DE CAPACIDAD
+# 10. ENDPOINT: CALCULADORA DE CAPACIDAD
 # ============================================================
 @app.route('/api/calcular-capacidad', methods=['POST'])
 def calcular_capacidad():
@@ -709,7 +769,204 @@ def calcular_capacidad():
         return jsonify({'error': str(e)}), 500
 
 # ============================================================
-# 10. ARRANQUE
+# 11. ENDPOINT: ANALIZADOR DE ZONAS DE SOMBRA
+# ============================================================
+@app.route('/api/analizar-sombras', methods=['POST'])
+def analizar_sombras():
+    """
+    Analiza un plano y las posiciones de APs para detectar zonas de sombra.
+    Devuelve: porcentaje de sombra, coordenadas de zonas críticas, sugerencias de APs.
+    """
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        # Parámetros de entrada
+        aps = data.get('aps', [])
+        width = data.get('width', 800)
+        height = data.get('height', 500)
+        walls = data.get('walls', [])
+        umbral_rssi = data.get('umbral_rssi', -70)
+        email = data.get('email')
+        industry = data.get('industry', 'No especificado')
+
+        if not aps:
+            return jsonify({'error': 'No hay APs para analizar'}), 400
+
+        # ============================================================
+        # 1. GENERAR MATRIZ DE RSSI
+        # ============================================================
+
+        step = RF['GRID_STEP']
+        cols = max(1, width // step)
+        rows = max(1, height // step)
+        matrix = []
+
+        scale_x = 20.0 / width
+        scale_y = 12.5 / height
+
+        for r in range(rows):
+            row = []
+
+            for c in range(cols):
+                px = c * step + step / 2
+                py = r * step + step / 2
+
+                best_rssi = -100
+
+                for ap in aps:
+                    ap_x = ap.get('x', 0)
+                    ap_y = ap.get('y', 0)
+
+                    dx = (px - ap_x) * scale_x
+                    dy = (py - ap_y) * scale_y
+                    dist = math.hypot(dx, dy)
+
+                    wall_count = count_walls_between_py(
+                        ap_x,
+                        ap_y,
+                        px,
+                        py,
+                        walls
+                    )
+
+                    rssi = calculate_rssi_py(
+                        RF['TX_POWER'],
+                        dist,
+                        wall_count
+                    )
+
+                    if rssi > best_rssi:
+                        best_rssi = rssi
+
+                row.append(best_rssi)
+
+            matrix.append(row)
+
+        # ============================================================
+        # 2. IDENTIFICAR ZONAS DE SOMBRA
+        # ============================================================
+
+        zonas_sombra = []
+
+        for r in range(rows):
+            for c in range(cols):
+                rssi = matrix[r][c]
+
+                if rssi < umbral_rssi and rssi > -100:
+                    zonas_sombra.append({
+                        'x': c * step + step / 2,
+                        'y': r * step + step / 2,
+                        'rssi': round(rssi, 2)
+                    })
+
+        total_puntos = rows * cols
+
+        porcentaje_sombra = (
+            (len(zonas_sombra) / total_puntos) * 100
+            if total_puntos > 0
+            else 0
+        )
+
+        # ============================================================
+        # 3. SUGERIR UBICACIONES PARA APs ADICIONALES
+        # ============================================================
+
+        sugerencias_aps = []
+
+        if porcentaje_sombra > 15:
+            if zonas_sombra:
+                centro_x = sum(
+                    p['x'] for p in zonas_sombra
+                ) / len(zonas_sombra)
+
+                centro_y = sum(
+                    p['y'] for p in zonas_sombra
+                ) / len(zonas_sombra)
+
+                sugerencias_aps.append({
+                    'x': round(centro_x, 2),
+                    'y': round(centro_y, 2),
+                    'justificacion': (
+                        f'Centro de zona con sombra '
+                        f'({len(zonas_sombra)} puntos)'
+                    )
+                })
+
+                if len(zonas_sombra) > total_puntos * 0.3:
+                    max_dist = 0
+                    segundo_punto = None
+
+                    for p in zonas_sombra:
+                        dist = math.hypot(
+                            p['x'] - centro_x,
+                            p['y'] - centro_y
+                        )
+
+                        if dist > max_dist:
+                            max_dist = dist
+                            segundo_punto = p
+
+                    if segundo_punto:
+                        sugerencias_aps.append({
+                            'x': round(segundo_punto['x'], 2),
+                            'y': round(segundo_punto['y'], 2),
+                            'justificacion': 'Segunda zona de sombra crítica'
+                        })
+
+        # ============================================================
+        # 4. GUARDAR LEAD EN SUPABASE
+        # ============================================================
+
+        if email:
+            metadata = {
+                'aps': aps,
+                'width': width,
+                'height': height,
+                'umbral_rssi': umbral_rssi,
+                'porcentaje_sombra': round(porcentaje_sombra, 2),
+                'total_puntos_sombra': len(zonas_sombra),
+                'sugerencias_aps': sugerencias_aps
+            }
+
+            guardado_exitoso, mensaje_guardado = guardar_lead_en_supabase(
+                email=email,
+                industry=industry,
+                product='shadow_analyzer',
+                source='web',
+                metadata=metadata,
+                template_used='shadow_analyzer'
+            )
+        else:
+            guardado_exitoso = False
+            mensaje_guardado = "No se proporcionó email."
+
+        # ============================================================
+        # 5. RESPUESTA
+        # ============================================================
+
+        return jsonify({
+            'porcentaje_sombra': round(porcentaje_sombra, 2),
+            'total_puntos_sombra': len(zonas_sombra),
+            'zonas_sombra': zonas_sombra[:200],
+            'sugerencias_aps': sugerencias_aps,
+            'detalles': {
+                'total_puntos': total_puntos,
+                'umbral_rssi': umbral_rssi,
+                'aps_analizados': len(aps)
+            },
+            'guardado': guardado_exitoso,
+            'mensaje_guardado': mensaje_guardado
+        })
+
+    except Exception as e:
+        print(f"❌ Error en /api/analizar-sombras: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# 12. ARRANQUE
 # ============================================================
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
