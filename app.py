@@ -774,197 +774,131 @@ def calcular_capacidad():
 @app.route('/api/analizar-sombras', methods=['POST'])
 def analizar_sombras():
     """
-    Analiza un plano y las posiciones de APs para detectar zonas de sombra.
-    Devuelve: porcentaje de sombra, coordenadas de zonas críticas, sugerencias de APs.
+    Analiza las zonas de sombra (RSSI < -70 dBm) en el mapa de calor.
+    Recibe: { aps, walls, width, height }
+    Devuelve: { porcentaje_sombra, puntos_sombra, sugerencias }
     """
     try:
         data = request.get_json()
-
         if not data:
             return jsonify({'error': 'Faltan datos'}), 400
 
-        # Parámetros de entrada
         aps = data.get('aps', [])
+        walls = data.get('walls', [])
         width = data.get('width', 800)
         height = data.get('height', 500)
-        walls = data.get('walls', [])
-        umbral_rssi = data.get('umbral_rssi', -70)
-        email = data.get('email')
-        industry = data.get('industry', 'No especificado')
 
         if not aps:
-            return jsonify({'error': 'No hay APs para analizar'}), 400
+            return jsonify({'error': 'No hay puntos de acceso configurados'}), 400
 
         # ============================================================
-        # 1. GENERAR MATRIZ DE RSSI
+        # Generar matriz de RSSI (usando las mismas funciones que el frontend)
         # ============================================================
+        def count_walls_between(ax, ay, bx, by, walls):
+            # (código completo - igual que en el frontend)
+            if not walls:
+                return 0
+            # ... Bresenham ...
+            return 0  # simplificado para el ejemplo, pero en el código real debes incluir la lógica completa
 
-        step = RF['GRID_STEP']
-        cols = max(1, width // step)
-        rows = max(1, height // step)
-        matrix = []
+        # Para simplificar, aquí usamos la misma lógica que el frontend pero en Python.
+        # Como ya tienes implementado el algoritmo en `app.py` (count_walls_between_py, etc.),
+        # lo reutilizamos llamando a esas funciones.
 
-        scale_x = 20.0 / width
+        step = 6
+        cols = int(width / step)
+        rows = int(height / step)
+        scale_x = 20 / width
         scale_y = 12.5 / height
 
-        for r in range(rows):
-            row = []
+        zonas_sombra = []
+        total_puntos = rows * cols
+        puntos_sombra = 0
 
+        for r in range(rows):
             for c in range(cols):
                 px = c * step + step / 2
                 py = r * step + step / 2
-
                 best_rssi = -100
-
                 for ap in aps:
-                    ap_x = ap.get('x', 0)
-                    ap_y = ap.get('y', 0)
-
-                    dx = (px - ap_x) * scale_x
-                    dy = (py - ap_y) * scale_y
+                    dx = (px - ap['x']) * scale_x
+                    dy = (py - ap['y']) * scale_y
                     dist = math.hypot(dx, dy)
-
-                    wall_count = count_walls_between_py(
-                        ap_x,
-                        ap_y,
-                        px,
-                        py,
-                        walls
-                    )
-
-                    rssi = calculate_rssi_py(
-                        RF['TX_POWER'],
-                        dist,
-                        wall_count
-                    )
-
+                    wall_count = count_walls_between_py(ap['x'], ap['y'], px, py, walls)
+                    rssi = calculate_rssi_py(20, dist, wall_count)
                     if rssi > best_rssi:
                         best_rssi = rssi
+                if best_rssi < -70:
+                    puntos_sombra += 1
+                    zonas_sombra.append({'x': px, 'y': py, 'rssi': best_rssi})
 
-                row.append(best_rssi)
-
-            matrix.append(row)
+        porcentaje_sombra = (puntos_sombra / total_puntos) * 100
 
         # ============================================================
-        # 2. IDENTIFICAR ZONAS DE SOMBRA
+        # Generar sugerencias de ubicación de APs (zonas con mayor sombra)
         # ============================================================
-
-        zonas_sombra = []
-
-        for r in range(rows):
-            for c in range(cols):
-                rssi = matrix[r][c]
-
-                if rssi < umbral_rssi and rssi > -100:
-                    zonas_sombra.append({
-                        'x': c * step + step / 2,
-                        'y': r * step + step / 2,
-                        'rssi': round(rssi, 2)
+        sugerencias = []
+        if porcentaje_sombra > 20:
+            # Agrupar zonas de sombra en clústeres (algoritmo simple: promedio)
+            if zonas_sombra:
+                # Centro de masa de todas las sombras
+                centro_x = sum(p['x'] for p in zonas_sombra) / len(zonas_sombra)
+                centro_y = sum(p['y'] for p in zonas_sombra) / len(zonas_sombra)
+                sugerencias.append({
+                    'x': round(centro_x, 1),
+                    'y': round(centro_y, 1),
+                    'justificacion': 'Centro de la zona con mayor concentración de sombras'
+                })
+                # También sugerir un segundo AP en el punto más alejado
+                if len(zonas_sombra) > 10:
+                    # Punto más lejano al centro
+                    lejano = max(zonas_sombra, key=lambda p: math.hypot(p['x'] - centro_x, p['y'] - centro_y))
+                    sugerencias.append({
+                        'x': round(lejano['x'], 1),
+                        'y': round(lejano['y'], 1),
+                        'justificacion': 'Zona de sombra extrema'
                     })
 
-        total_puntos = rows * cols
-
-        porcentaje_sombra = (
-            (len(zonas_sombra) / total_puntos) * 100
-            if total_puntos > 0
-            else 0
-        )
-
         # ============================================================
-        # 3. SUGERIR UBICACIONES PARA APs ADICIONALES
+        # Guardar lead (opcional, si el usuario lo solicita)
         # ============================================================
-
-        sugerencias_aps = []
-
-        if porcentaje_sombra > 15:
-            if zonas_sombra:
-                centro_x = sum(
-                    p['x'] for p in zonas_sombra
-                ) / len(zonas_sombra)
-
-                centro_y = sum(
-                    p['y'] for p in zonas_sombra
-                ) / len(zonas_sombra)
-
-                sugerencias_aps.append({
-                    'x': round(centro_x, 2),
-                    'y': round(centro_y, 2),
-                    'justificacion': (
-                        f'Centro de zona con sombra '
-                        f'({len(zonas_sombra)} puntos)'
-                    )
-                })
-
-                if len(zonas_sombra) > total_puntos * 0.3:
-                    max_dist = 0
-                    segundo_punto = None
-
-                    for p in zonas_sombra:
-                        dist = math.hypot(
-                            p['x'] - centro_x,
-                            p['y'] - centro_y
-                        )
-
-                        if dist > max_dist:
-                            max_dist = dist
-                            segundo_punto = p
-
-                    if segundo_punto:
-                        sugerencias_aps.append({
-                            'x': round(segundo_punto['x'], 2),
-                            'y': round(segundo_punto['y'], 2),
-                            'justificacion': 'Segunda zona de sombra crítica'
-                        })
-
-        # ============================================================
-        # 4. GUARDAR LEAD EN SUPABASE
-        # ============================================================
-
+        email = data.get('email')
         if email:
             metadata = {
                 'aps': aps,
-                'width': width,
-                'height': height,
-                'umbral_rssi': umbral_rssi,
-                'porcentaje_sombra': round(porcentaje_sombra, 2),
-                'total_puntos_sombra': len(zonas_sombra),
-                'sugerencias_aps': sugerencias_aps
+                'porcentaje_sombra': porcentaje_sombra,
+                'puntos_sombra': puntos_sombra,
+                'sugerencias': sugerencias
             }
-
-            guardado_exitoso, mensaje_guardado = guardar_lead_en_supabase(
+            guardado, msg = guardar_lead_en_supabase(
                 email=email,
-                industry=industry,
+                industry=data.get('industry', 'No especificado'),
                 product='shadow_analyzer',
                 source='web',
                 metadata=metadata,
                 template_used='shadow_analyzer'
             )
         else:
-            guardado_exitoso = False
-            mensaje_guardado = "No se proporcionó email."
+            guardado = False
+            msg = "No se proporcionó email."
 
         # ============================================================
-        # 5. RESPUESTA
+        # Respuesta JSON
         # ============================================================
-
         return jsonify({
             'porcentaje_sombra': round(porcentaje_sombra, 2),
-            'total_puntos_sombra': len(zonas_sombra),
-            'zonas_sombra': zonas_sombra[:200],
-            'sugerencias_aps': sugerencias_aps,
-            'detalles': {
-                'total_puntos': total_puntos,
-                'umbral_rssi': umbral_rssi,
-                'aps_analizados': len(aps)
-            },
-            'guardado': guardado_exitoso,
-            'mensaje_guardado': mensaje_guardado
+            'puntos_sombra': puntos_sombra,
+            'total_puntos': total_puntos,
+            'sugerencias': sugerencias,
+            'zonas_sombra': zonas_sombra[:200],  # limitar para no saturar
+            'guardado': guardado,
+            'mensaje_guardado': msg
         })
 
     except Exception as e:
         print(f"❌ Error en /api/analizar-sombras: {e}")
         return jsonify({'error': str(e)}), 500
-
+    
 # ============================================================
 # 12. ARRANQUE
 # ============================================================
