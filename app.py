@@ -717,6 +717,73 @@ def generar_pdf_sombras(data, email, industry):
     buffer.seek(0)
     return buffer
 
+# ============================================================
+# GENERADOR DE PROPUESTAS
+# ============================================================
+def generar_propuesta_template(nombre_cliente, nombre_proyecto, servicios, detalles, tono):
+    """Genera una propuesta profesional usando plantillas predefinidas."""
+    
+    # Mapeo de tonos
+    saludos = {
+        'formal': 'Estimado(a)',
+        'semiformal': 'Hola',
+        'informal': '¡Hola!'
+    }
+    despedidas = {
+        'formal': 'Quedamos a su disposición para cualquier consulta.',
+        'semiformal': 'Quedamos atentos a sus comentarios.',
+        'informal': '¡Esperamos trabajar contigo pronto!'
+    }
+    
+    saludo = saludos.get(tono, 'Estimado(a)')
+    despedida = despedidas.get(tono, 'Quedamos a su disposición.')
+    
+    # Plantilla estructurada
+    propuesta = f"""
+    {saludo} {nombre_cliente},
+
+    Nos complace presentarle nuestra propuesta para el proyecto **{nombre_proyecto}**.
+
+    **1. Introducción**
+    En Venezuela Insights, somos especialistas en soluciones tecnológicas avanzadas. Hemos identificado que {detalles or 'su organización requiere una solución integral para optimizar sus procesos.'}
+
+    **2. Objetivos del Proyecto**
+    - Implementar {servicios} para mejorar la eficiencia operativa.
+    - Reducir tiempos de respuesta y optimizar recursos.
+    - Garantizar la escalabilidad y seguridad de la infraestructura.
+
+    **3. Metodología**
+    Nuestro enfoque se basa en un análisis detallado de sus necesidades actuales, seguido de:
+    - Fase 1: Diagnóstico y levantamiento de información.
+    - Fase 2: Diseño de la solución personalizada.
+    - Fase 3: Implementación y pruebas.
+    - Fase 4: Capacitación y entrega final.
+
+    **4. Entregables**
+    - Informe ejecutivo con hallazgos y recomendaciones.
+    - Plan de implementación detallado.
+    - Documentación técnica completa.
+    - Soporte post-implementación por 30 días.
+
+    **5. Cronograma Estimado**
+    El proyecto se desarrollará en un plazo de 4 a 6 semanas, dependiendo de la complejidad de los requerimientos.
+
+    **6. Presupuesto Estimado**
+    Basado en el alcance descrito, estimamos un presupuesto de entre $3,000 y $8,000 USD, el cual será ajustado según los detalles finales del proyecto.
+
+    **7. Próximos Pasos**
+    Para avanzar, le sugerimos:
+    - Programar una reunión de kick-off para definir alcance final.
+    - Revisar y firmar el contrato de servicios.
+    - Iniciar con la fase de diagnóstico.
+
+    {despedida}
+
+    Atentamente,
+    **Venezuela Insights**
+    Equipo de Consultoría Tecnológica
+    """
+    return propuesta.strip()
 
 # ============================================================
 # FUNCIÓN: ANALIZAR ZONAS DE SOMBRA
@@ -924,9 +991,9 @@ def optimize_aps(width, height, num_aps, walls, iterations=150):
 # ============================================================
 # ENDPOINT: /health
 # ============================================================
-@app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+@app.route("/health", methods=["GET"])
+def health_check():
+    return {"status": "ok"}, 200
 
 # ============================================================
 # 7. ENDPOINT: /api/optimize
@@ -1725,72 +1792,110 @@ def generar_propuesta():
         if not data:
             return jsonify({'error': 'Faltan datos'}), 400
 
-        email = data.get('email', '').strip()
-        if not email or '@' not in email:
-            return jsonify({'error': 'Correo inválido'}), 400
-
         nombre_cliente = data.get('nombre_cliente', '').strip()
         nombre_proyecto = data.get('nombre_proyecto', '').strip()
         servicios = data.get('servicios', '').strip()
         detalles = data.get('detalles', '').strip()
-        tono = data.get('tono', 'formal')
+        tono = data.get('tono', 'semiformal')
 
         if not nombre_cliente or not nombre_proyecto or not servicios:
             return jsonify({'error': 'Faltan campos obligatorios'}), 400
 
-        # ============================================================
-        # Verificar límite de uso por email (3 propuestas al día)
-        # ============================================================
-        today = datetime.now().strftime('%Y-%m-%d')
-        result = supabase.table('usage_limits').select('count').eq('email', email).eq('date', today).execute()
-        count = result.data[0]['count'] if result.data else 0
+        # Generar propuesta con plantilla
+        propuesta = generar_propuesta_template(
+            nombre_cliente, nombre_proyecto, servicios, detalles, tono
+        )
 
-        if count >= 3:
-            return jsonify({
-                'error': 'Has alcanzado el límite de 3 propuestas diarias. Mejora tu plan para acceso ilimitado.',
-                'limit_exceeded': True
-            }), 429
+        return jsonify({
+            'propuesta': propuesta,
+            'titulo': f'Propuesta para {nombre_proyecto} - {nombre_cliente}',
+        })
 
-        # Generar propuesta
-        propuesta = generar_propuesta_gemini(nombre_cliente, nombre_proyecto, servicios, detalles, tono)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        return jsonify({'error': str(e)}), 500
 
-        # Actualizar o insertar el contador
-        if result.data:
-            supabase.table('usage_limits').update({'count': count + 1}).eq('email', email).eq('date', today).execute()
-        else:
-            supabase.table('usage_limits').insert({
-                'email': email,
-                'date': today,
-                'count': 1
-            }).execute()
+@app.route('/api/generar-pdf-propuesta', methods=['POST'])
+def generar_pdf_propuesta():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
 
-        # Guardar lead en Supabase (product: 'proposal_generator')
+        email = data.get('email', '').strip()
+        industry = data.get('industry', 'No especificado')
+        propuesta_texto = data.get('propuesta', '')
+        titulo = data.get('titulo', 'Propuesta Comercial')
+
+        if not email or '@' not in email:
+            return jsonify({'error': 'Correo inválido'}), 400
+        if not propuesta_texto:
+            return jsonify({'error': 'No hay propuesta para generar el PDF'}), 400
+
+        # Guardar lead en Supabase
         metadata = {
-            'nombre_cliente': nombre_cliente,
-            'nombre_proyecto': nombre_proyecto,
-            'servicios': servicios,
-            'tono': tono,
-            'longitud': len(propuesta)
+            'titulo': titulo,
+            'industry': industry,
+            'longitud': len(propuesta_texto)
         }
         guardado, msg = guardar_lead_en_supabase(
             email=email,
-            industry=data.get('industry', 'No especificado'),
+            industry=industry,
             product='proposal_generator',
             source='web',
             metadata=metadata,
             template_used='proposal_generator'
         )
 
-        return jsonify({
-            'propuesta': propuesta,
-            'titulo': f'Propuesta para {nombre_proyecto} - {nombre_cliente}',
-            'servicio': servicios,
-            'usos_restantes': 3 - (count + 1),
-            'guardado': guardado
-        })
+        # Generar PDF
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        page_width, page_height = A4
+        margin = 50
+        y = page_height - margin
+
+        # Título
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(margin, y, titulo)
+        y -= 30
+
+        c.setFont("Helvetica", 10)
+        c.setFillColor(colors.grey)
+        c.drawString(margin, y, f"Generado para: {email}")
+        y -= 15
+        c.drawString(margin, y, f"Fecha: {datetime.now().strftime('%d/%m/%Y')}")
+        y -= 25
+        c.setFillColor(colors.black)
+
+        # Cuerpo (con wrap básico)
+        c.setFont("Helvetica", 11)
+        lineas = propuesta_texto.split('\n')
+        for linea in lineas:
+            if linea.strip().startswith('**') or linea.strip().startswith('#'):
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(margin, y, linea.strip().replace('**', '').replace('#', ''))
+                c.setFont("Helvetica", 11)
+            else:
+                c.drawString(margin, y, linea)
+            y -= 18
+            if y < margin:
+                c.showPage()
+                y = page_height - margin
+                c.setFont("Helvetica", 11)
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"propuesta_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mimetype='application/pdf'
+        )
 
     except Exception as e:
-        print(f"❌ Error en /api/generar-propuesta: {e}")
+        print(f"❌ Error en PDF: {e}")
         return jsonify({'error': str(e)}), 500
     
 # ============================================================
