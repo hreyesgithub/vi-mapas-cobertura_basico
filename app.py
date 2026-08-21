@@ -40,7 +40,20 @@ else:
 # 2. INICIALIZACIÓN DE FLASK
 # ============================================================
 app = Flask(__name__)
-CORS(app)  # Permite peticiones desde tu frontend (Netlify/Vercel)
+
+# Habilitar CORS para toda la aplicación
+# Esto permite que cualquier origen (como tu localhost) se comunique con la API
+CORS(
+    app, 
+     resources={
+         r"/api/*": {
+            "origins": [
+                        "http://127.0.0.1:5500", 
+                        "https://venezuelainsights.com"
+                    ]
+                    }
+                }
+    )  # Permite peticiones desde tu frontend (Netlify/Vercel)
 
 # ============================================================
 # 3. CONSTANTES DE RF (MISMA LÓGICA QUE EL FRONTEND)
