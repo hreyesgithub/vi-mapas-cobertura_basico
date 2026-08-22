@@ -2009,13 +2009,15 @@ def optimizar_turnos():
         # Resumen de horas por empleado
         horas_empleados = defaultdict(int) #type: ignore
         dias_trabajados_por_empleado = defaultdict(set) #type: ignore
+
         for tipo_turno, bloques in horario_optimo.items():
-            dias = [d.value for d in obtener_dias_por_tipo(TipoTurno(tipo_turno))] #type: ignore
+            dias = obtener_dias_por_tipo(TipoTurno(tipo_turno)) #type: ignore
+
             for bloque, emp_nombres in bloques.items():
                 for emp in emp_nombres:
                     horas_empleados[emp] += 8 * len(dias)
                     for dia in dias:
-                        dias_trabajados_por_empleado[emp].add(dia.name)
+                        dias_trabajados_por_empleado[emp].add(dia)
 
         # Guardar lead (si hay email)
         guardado = False
