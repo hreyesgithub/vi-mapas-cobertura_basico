@@ -60,7 +60,7 @@ def crear_horario_aleatorio(empleados, requerimientos):
         for bloque, req in req_turno.items():
             empleados_disponibles = [
                 e["nombre"] for e in empleados
-                if any(e["disponibilidad"][dia] for dia in dias) # type:ignore
+                if any(e["disponibilidad"].get(dia.name) for dia in dias) # type:ignore
                 and bloque in e["preferencias"]
             ]
             if empleados_disponibles and req > 0:
@@ -103,7 +103,7 @@ def evaluar_horario(horario, empleados, requerimientos):
     for emp_nombre, dias_trab in dias_trabajados_por_empleado.items():
         empleado = next(e for e in empleados if e["nombre"] == emp_nombre)
         for dia in dias_trab:
-            if not empleado["disponibilidad"][dia]:
+            if not empleado["disponibilidad"].get(dia.name):
                 puntuacion -= 200
 
     # Bonificaciones por preferencias
@@ -140,7 +140,7 @@ def mutar(horario, empleados, requerimientos):
     dias = obtener_dias_por_tipo(TipoTurno(tipo_turno_a_mutar))
     empleados_disponibles = [
         e["nombre"] for e in empleados
-        if all(e["disponibilidad"][dia] for dia in dias) # type:ignore
+        if all(e["disponibilidad"].get(dia.name) for dia in dias) # type:ignore
         and bloque_a_mutar in e["preferencias"]
     ]
     if not empleados_disponibles:
