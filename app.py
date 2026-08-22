@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt  # type: ignore opcional, si quieres incluir gr√
 import io as io_base
 import base64
 import time
+from collections import defaultdict
 
 # IMPORTAR ARCHIVOS
 from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, DiaSemana, TipoTurno, BLOQUES_HORARIOS
