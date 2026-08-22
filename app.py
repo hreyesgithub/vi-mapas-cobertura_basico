@@ -2015,7 +2015,7 @@ def optimizar_turnos():
                 for emp in emp_nombres:
                     horas_empleados[emp] += 8 * len(dias)
                     for dia in dias:
-                        dias_trabajados_por_empleado[emp].add(dia)
+                        dias_trabajados_por_empleado[emp].add(dia.name)
 
         # Guardar lead (si hay email)
         guardado = False
