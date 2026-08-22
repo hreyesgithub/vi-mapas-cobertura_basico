@@ -26,6 +26,10 @@ import io as io_base
 import base64
 import time
 
+# IMPORTAR ARCHIVOS
+from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, DiaSemana, TipoTurno, BLOQUES_HORARIOS
+from utilidades.simulador import simular_trafico
+
 # SUPABASE
 from supabase import create_client, Client  # type: ignore
 
@@ -1959,6 +1963,373 @@ def generar_pdf_propuesta():
         print(f"❌ Error en PDF: {e}")
         return jsonify({"error": str(e)}), 500
 
+# ============================================================
+# ENDPOINT: /api/optimizar-turnos
+# ============================================================
+@app.route('/api/optimizar-turnos', methods=['POST'])
+def optimizar_turnos():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        empleados = data.get('empleados', [])
+        requerimientos = data.get('requerimientos', {})
+        anio = data.get('anio', 2025)
+        mes = data.get('mes', 5)
+        tamano_poblacion = data.get('tamano_poblacion', 30)
+        generaciones = data.get('generaciones', 50)
+        tasa_mutacion = data.get('tasa_mutacion', 0.3)
+        email = data.get('email')
+        industry = data.get('industry', 'No especificado')
+
+        # Validaciones
+        if not empleados or not requerimientos:
+            return jsonify({'error': 'Se necesitan empleados y requerimientos'}), 400
+
+        # Ejecutar algoritmo
+        horario_optimo, costo_total = ejecutar_algoritmo_genetico(
+            empleados, requerimientos, tamano_poblacion, generaciones, tasa_mutacion
+        )
+
+        # Generar planificación mensual
+        dias_mes = obtener_dias_mes(anio, mes)
+        planificacion_diaria = defaultdict(lambda: defaultdict(list)) #type: ignore
+        for fecha, dia_semana in dias_mes:
+            if dia_semana == DiaSemana.SABADO:
+                tipo_turno = TipoTurno.SABADO.value
+            elif dia_semana == DiaSemana.DOMINGO:
+                tipo_turno = TipoTurno.DOMINGO.value
+            else:
+                tipo_turno = TipoTurno.LUNES_VIERNES.value
+            for bloque, emp_nombres in horario_optimo.get(tipo_turno, {}).items():
+                for emp in emp_nombres:
+                    planificacion_diaria[fecha.strftime('%Y-%m-%d')][bloque].append(emp)
+
+        # Resumen de horas por empleado
+        horas_empleados = defaultdict(int) #type: ignore
+        dias_trabajados_por_empleado = defaultdict(set) #type: ignore
+        for tipo_turno, bloques in horario_optimo.items():
+            dias = [d.value for d in obtener_dias_por_tipo(TipoTurno(tipo_turno))] #type: ignore
+            for bloque, emp_nombres in bloques.items():
+                for emp in emp_nombres:
+                    horas_empleados[emp] += 8 * len(dias)
+                    for dia in dias:
+                        dias_trabajados_por_empleado[emp].add(dia)
+
+        # Guardar lead (si hay email)
+        guardado = False
+        msg = "No se proporcionó email (opcional)"
+        if email:
+            metadata = {
+                'empleados': len(empleados),
+                'costo_total': costo_total,
+                'horario_optimo': horario_optimo,
+                'mes': mes,
+                'anio': anio
+            }
+            guardado, msg = guardar_lead_en_supabase(
+                email=email,
+                industry=industry,
+                product='turnos_optimizer',
+                source='web',
+                metadata=metadata,
+                template_used='turnos_optimizer'
+            )
+
+        return jsonify({
+            'horario_optimo': horario_optimo,
+            'costo_total': round(costo_total, 2),
+            'planificacion_diaria': dict(planificacion_diaria),
+            'horas_por_empleado': dict(horas_empleados),
+            'dias_trabajados_por_empleado': {k: [d.name for d in v] for k, v in dias_trabajados_por_empleado.items()},
+            'guardado': guardado,
+            'mensaje_guardado': msg
+        })
+
+    except Exception as e:
+        print(f"❌ Error en /api/optimizar-turnos: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generar-pdf-turnos', methods=['POST'])
+def generar_pdf_turnos():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        email = data.get('email', '').strip()
+        industry = data.get('industry', 'No especificado')
+        horario_optimo = data.get('horario_optimo', {})
+        costo_total = data.get('costo_total', 0)
+        planificacion_diaria = data.get('planificacion_diaria', {})
+        horas_por_empleado = data.get('horas_por_empleado', {})
+        anio = data.get('anio', 2025)
+        mes = data.get('mes', 5)
+
+        if not email or '@' not in email:
+            return jsonify({'error': 'Correo inválido'}), 400
+
+        # Generar PDF con ReportLab
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        import io
+
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        page_width, page_height = A4
+        margin = 50
+        y = page_height - margin
+
+        # Título
+        c.setFont("Helvetica-Bold", 18)
+        c.setFillColor(colors.HexColor("#0b132b"))
+        c.drawString(margin, y, "Informe de Optimización de Turnos")
+        y -= 30
+
+        c.setFont("Helvetica", 10)
+        c.setFillColor(colors.grey)
+        c.drawString(margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        y -= 25
+        c.setFillColor(colors.black)
+
+        # Datos del proyecto
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin, y, "Datos del Proyecto")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        c.drawString(margin, y, f"Correo: {email}")
+        y -= 15
+        c.drawString(margin, y, f"Industria: {industry}")
+        y -= 15
+        c.drawString(margin, y, f"Mes: {mes}/{anio}")
+        y -= 25
+
+        # Resumen económico
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.HexColor("#1c2541"))
+        c.drawString(margin, y, "Resumen Económico")
+        y -= 20
+        c.setFont("Helvetica", 11)
+        c.drawString(margin, y, f"• Costo total mensual: ${costo_total:.2f}")
+        y -= 16
+
+        # Horas por empleado
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin, y, "Horas por Empleado")
+        y -= 18
+        c.setFont("Helvetica", 10)
+        for emp, horas in horas_por_empleado.items():
+            c.drawString(margin, y, f"• {emp}: {horas}h")
+            y -= 14
+
+        # Planificación (resumen)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin, y, "Planificación (primeros 5 días)")
+        y -= 18
+        c.setFont("Helvetica", 9)
+        dias_mostrados = list(planificacion_diaria.keys())[:5]
+        for dia in dias_mostrados:
+            c.drawString(margin, y, f"{dia}:")
+            y -= 12
+            for bloque, emp_list in planificacion_diaria[dia].items():
+                c.drawString(margin + 20, y, f"  {bloque}: {', '.join(emp_list)}")
+                y -= 12
+
+        # Pie de página
+        y = margin
+        c.setFont("Helvetica-Oblique", 8)
+        c.setFillColor(colors.grey)
+        c.drawString(margin, y, "Este informe fue generado automáticamente por Venezuela Insights.")
+        c.drawRightString(page_width - margin, y, "v1.0 - IA Insights")
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"informe_turnos_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"❌ Error en /api/generar-pdf-turnos: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# ENDPOINT: /api/simular-trafico (Simulador de Tráfico de Redes)
+# ============================================================
+@app.route('/api/simular-trafico', methods=['POST'])
+def api_simular_trafico():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        escenario = {
+            'num_aps': data.get('num_aps', 2),
+            'capacidad_ap': data.get('capacidad_ap', 450),
+            'num_usuarios': data.get('num_usuarios', 50),
+            'tipo_trafico': data.get('tipo_trafico', 'mixto'),
+            'tiempo_simulacion': data.get('tiempo_simulacion', 50),
+            'fallo_ap': data.get('fallo_ap', None)  # Si es None, no hay fallo
+        }
+
+        resultados = simular_trafico(escenario)
+
+        # Guardar lead si se proporciona email (opcional)
+        email = data.get('email')
+        if email:
+            metadata = {
+                'escenario': escenario,
+                'resultados': resultados
+            }
+            guardado, msg = guardar_lead_en_supabase(
+                email=email,
+                industry=data.get('industry', 'No especificado'),
+                product='traffic_simulator',
+                source='web',
+                metadata=metadata,
+                template_used='traffic_simulator'
+            )
+        else:
+            guardado = False
+            msg = "No se proporcionó email (opcional)"
+
+        return jsonify({
+            'resultados': resultados,
+            'guardado': guardado,
+            'mensaje_guardado': msg
+        })
+
+    except Exception as e:
+        print(f"❌ Error en /api/simular-trafico: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/generar-pdf-simulacion', methods=['POST'])
+def generar_pdf_simulacion():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Faltan datos'}), 400
+
+        email = data.get('email', '').strip()
+        industry = data.get('industry', 'No especificado')
+        resultados = data.get('resultados', {})
+        escenario = data.get('escenario', {})
+
+        if not email or '@' not in email:
+            return jsonify({'error': 'Correo inválido'}), 400
+
+        # Generar PDF con ReportLab
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib import colors
+        import io
+
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        page_width, page_height = A4
+        margin = 50
+        y = page_height - margin
+
+        # Título
+        c.setFont("Helvetica-Bold", 18)
+        c.setFillColor(colors.HexColor("#0b132b"))
+        c.drawString(margin, y, "Informe de Simulación de Tráfico de Redes")
+        y -= 30
+
+        c.setFont("Helvetica", 10)
+        c.setFillColor(colors.grey)
+        c.drawString(margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        y -= 25
+        c.setFillColor(colors.black)
+
+        # Datos del cliente
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin, y, "Datos del Proyecto")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        c.drawString(margin, y, f"Correo: {email}")
+        y -= 15
+        c.drawString(margin, y, f"Industria: {industry}")
+        y -= 15
+        c.drawString(margin, y, f"Fecha: {datetime.now().strftime('%d/%m/%Y')}")
+        y -= 25
+
+        # Resumen de escenario
+        c.setFont("Helvetica-Bold", 14)
+        c.setFillColor(colors.HexColor("#1c2541"))
+        c.drawString(margin, y, "Resumen del Escenario")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        c.drawString(margin, y, f"• APs: {escenario.get('num_aps', 'N/A')}")
+        y -= 15
+        c.drawString(margin, y, f"• Capacidad por AP: {escenario.get('capacidad_ap', 'N/A')} Mbps")
+        y -= 15
+        c.drawString(margin, y, f"• Usuarios: {escenario.get('num_usuarios', 'N/A')}")
+        y -= 15
+        c.drawString(margin, y, f"• Tipo de tráfico: {escenario.get('tipo_trafico', 'N/A')}")
+        y -= 15
+        c.drawString(margin, y, f"• Fallo simulado: {escenario.get('fallo_ap', 'Sin fallo')}")
+        y -= 25
+
+        # Resultados por AP
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin, y, "Resultados por AP")
+        y -= 18
+        c.setFont("Helvetica", 10)
+        stats = resultados.get('estadisticas', {})
+        for ap, data in stats.items():
+            carga_prom = data.get('promedio', 0)
+            carga_max = data.get('maximo', 0)
+            porcentaje = round((carga_prom / escenario.get('capacidad_ap', 450)) * 100) if escenario.get('capacidad_ap') else 0
+            c.drawString(margin, y, f"AP{int(ap)+1}: Promedio {carga_prom} Mbps, Pico {carga_max} Mbps ({porcentaje}% de capacidad)")
+            y -= 15
+
+        y -= 10
+
+        # Alertas
+        alertas = resultados.get('alertas', [])
+        if alertas:
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(colors.red)
+            c.drawString(margin, y, "Alertas Detectadas")
+            y -= 18
+            c.setFont("Helvetica", 10)
+            c.setFillColor(colors.black)
+            for alerta in alertas[:10]:  # Limitamos a 10
+                c.drawString(margin, y, f"• {alerta}")
+                y -= 15
+        else:
+            c.setFont("Helvetica-Bold", 12)
+            c.setFillColor(colors.HexColor("#10b981"))
+            c.drawString(margin, y, "✅ No se detectaron alertas. La red está estable.")
+
+        # Pie de página
+        y = margin
+        c.setFont("Helvetica-Oblique", 8)
+        c.setFillColor(colors.grey)
+        c.drawString(margin, y, "Este informe fue generado automáticamente por el Simulador de Tráfico de Redes de Venezuela Insights.")
+        c.drawRightString(page_width - margin, y, "v1.0 - IA Insights")
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"informe_simulacion_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            mimetype='application/pdf'
+        )
+
+    except Exception as e:
+        print(f"❌ Error en /api/generar-pdf-simulacion: {e}")
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================
 # ARRANQUE
