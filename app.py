@@ -28,7 +28,7 @@ import time
 from collections import defaultdict
 
 # IMPORTAR ARCHIVOS
-from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, DiaSemana, TipoTurno, BLOQUES_HORARIOS
+from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, obtener_dias_por_tipo,  DiaSemana, TipoTurno, BLOQUES_HORARIOS
 from utilidades.simulador import simular_trafico
 
 # SUPABASE
@@ -2016,8 +2016,8 @@ def optimizar_turnos():
 
             for bloque, emp_nombres in bloques.items():
                 for emp in emp_nombres:
-                    horas_empleados[emp] += 8 * len(dias)
-                    for dia in dias:
+                    horas_empleados[emp] += 8 * len(dias) # type: ignore
+                    for dia in dias:  # type: ignore
                         dias_trabajados_por_empleado[emp].add(dia)
 
         # Guardar lead (si hay email)
