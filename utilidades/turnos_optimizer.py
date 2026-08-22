@@ -122,7 +122,7 @@ def seleccionar(poblacion_con_puntuacion):
 
 def cruzar(horario1, horario2):
     nuevo_horario = defaultdict(lambda: defaultdict(list))
-    for tipo_turno in list(horario1.keys()) | list(horario2.keys()): # type:ignore
+    for tipo_turno in set(horario1.keys()) | set(horario2.keys()):
         for bloque in BLOQUES_HORARIOS:
             if random.random() < 0.5:
                 nuevo_horario[tipo_turno][bloque] = horario1.get(tipo_turno, {}).get(bloque, [])[:]
