@@ -30,6 +30,7 @@ from collections import defaultdict
 # IMPORTAR ARCHIVOS
 from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, obtener_dias_por_tipo,  DiaSemana, TipoTurno, BLOQUES_HORARIOS
 from utilidades.simulador import simular_trafico
+from utilidades.backend_agrupacion import procesar_agrupacion_reportes
 
 # SUPABASE
 from supabase import create_client, Client  # type: ignore
@@ -2333,6 +2334,36 @@ def generar_pdf_simulacion():
     except Exception as e:
         print(f"❌ Error en /api/generar-pdf-simulacion: {e}")
         return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# ENDPOINT: /api/optimizar-cuadrillas (Simulador de Tráfico de Redes)
+# ============================================================
+@app.route('/api/optimizar-cuadrillas', methods=['POST'])
+def agrupar_reportes():
+    try:
+        # Extraer cuerpo JSON (opcional: permite modificar parámetros desde el frontend)
+        data = request.get_json() or {}
+
+        num_reportes = data.get('num_reportes', 1200)
+        region = data.get('region', 'Región Capital')
+        eps_km = data.get('eps_km', 0.2)
+        min_samples = data.get('min_samples', 2)
+
+        # Ejecutar algoritmo
+        resultado = procesar_agrupacion_reportes(
+            num_reportes=num_reportes,
+            region=region,
+            eps_km=eps_km,
+            min_samples=min_samples
+        )
+
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Error interno al procesar la agrupación de reportes",
+            "detalle": str(e)
+        }), 500
 
 # ============================================================
 # ARRANQUE
