@@ -32,6 +32,12 @@ from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dia
 from utilidades.simulador import simular_trafico
 from utilidades.backend_agrupacion import procesar_agrupacion_reportes
 from utilidades.biomimetica_electrica import RedElectrica
+from utilidades.reuso_freq_link_microwave import (
+    generar_torres,
+    construir_grafo,
+    welsh_powell,
+    exportar_json_estructura
+)
 
 # SUPABASE
 from supabase import create_client, Client  # type: ignore
@@ -2432,6 +2438,103 @@ def api_reset():
     global red
     red = RedElectrica()
     return jsonify({'status': 'reset'})
+
+# ============================================================
+# ENDPOINT: /api/optimizar-reuso (Microondas)
+# ============================================================
+@app.route('/api/optimizar-reuso', methods=['POST'])
+def optimizar_reuso():
+    """
+    Endpoint para optimizar el reuso de frecuencias en enlaces de microondas.
+    Recibe parámetros opcionales:
+        - num_torres: int (por defecto 15)
+        - torres_personalizadas: lista de dicts con lat, lon, azimuth, banda (opcional)
+        - email, nombre, organismo (para lead magnet)
+    Devuelve:
+        - nodos, aristas, canales_tradicionales, canales_optimizados
+        - estado de guardado del lead
+    """
+    try:
+        data = request.get_json() or {}
+
+        # Parámetros de simulación
+        num_torres = data.get('num_torres', 15)
+        torres_personalizadas = data.get('torres_personalizadas', None)
+
+        # Si se envían torres personalizadas, usarlas; si no, generar aleatorias
+        if torres_personalizadas and len(torres_personalizadas) > 0:
+            torres = torres_personalizadas
+        else:
+            torres = generar_torres(num_torres)
+
+        # Construir grafo de interferencias
+        adyacencias, aristas = construir_grafo(torres)
+
+        # Aplicar Welsh‑Powell
+        colores, num_colores = welsh_powell(adyacencias, len(torres))
+
+        # Armar estructura de respuesta (similar al JSON esperado por frontend)
+        nodos = []
+        for i, t in enumerate(torres):
+            nodos.append({
+                "id": i,
+                "lat": t["lat"],
+                "lon": t["lon"],
+                "azimuth": t["azimuth"],
+                "banda": t["banda"],
+                "canal": colores[i]
+            })
+
+        resultado = {
+            "nodos": nodos,
+            "aristas": aristas,
+            "canales_tradicionales": len(torres),
+            "canales_optimizados": num_colores
+        }
+
+        # --- Captura de lead (similar al ejemplo) ---
+        email = data.get('email')
+        nombre = data.get('nombre')
+        organismo = data.get('organismo') or data.get('empresa', 'No especificado')
+
+        guardado = False
+        msg = "No se proporcionó email (opcional)"
+        if email:
+            metadata = {
+                'nombre': nombre,
+                'organismo': organismo,
+                'parametros': {
+                    'num_torres': num_torres,
+                    'torres_personalizadas': bool(torres_personalizadas)
+                },
+                'estadisticas': {
+                    'canales_tradicionales': len(torres),
+                    'canales_optimizados': num_colores
+                }
+            }
+            guardado, msg = guardar_lead_en_supabase(
+                email=email,
+                industry=organismo,
+                product='reuso_frecuencias',
+                source='web',
+                metadata=metadata,
+                template_used='reuso_frecuencias'
+            )
+
+        respuesta = {
+            **resultado,
+            'guardado': guardado,
+            'mensaje_guardado': msg
+        }
+
+        return jsonify(respuesta), 200
+
+    except Exception as e:
+        print(f"❌ Error en /api/optimizar-reuso: {e}")
+        return jsonify({
+            "error": "Error interno al procesar la optimización de reuso",
+            "detalle": str(e)
+        }), 500
 
 # ============================================================
 # ARRANQUE
