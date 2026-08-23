@@ -31,6 +31,7 @@ from collections import defaultdict
 from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, obtener_dias_por_tipo,  DiaSemana, TipoTurno, BLOQUES_HORARIOS
 from utilidades.simulador import simular_trafico
 from utilidades.backend_agrupacion import procesar_agrupacion_reportes
+from utilidades.biomimetica_electrica import RedElectrica
 
 # SUPABASE
 from supabase import create_client, Client  # type: ignore
@@ -157,6 +158,8 @@ RF = {
     "GRID_STEP": 8,  # Para evaluación rápida en backend
 }
 
+# -------------------- INSTANCIA GLOBAL DE LA RED --------------------
+red = RedElectrica()
 
 # ============================================================
 # 4. ALGORITMOS DE PROPAGACIÓN Y BRESENHAM (PYTHON)
@@ -2408,6 +2411,27 @@ def agrupar_reportes():
             "error": "Error interno al procesar la agrupación de reportes",
             "detalle": str(e)
         }), 500
+
+# ============================================================
+# ENDPOINT: /api/bio-electrica (CANTV)
+# ============================================================
+@app.route('/api/bio-electrica/estado')
+def api_estado():
+    return jsonify(red.obtener_estado())
+
+@app.route('/api/bio-electrica/paso', methods=['POST'])
+def api_paso():
+    data = request.get_json()
+    modo = data.get('modo', 'biomimetico')
+    red.modo = modo
+    estado = red.paso_simulacion()
+    return jsonify(estado)
+
+@app.route('/api/bio-electrica/reset', methods=['POST'])
+def api_reset():
+    global red
+    red = RedElectrica()
+    return jsonify({'status': 'reset'})
 
 # ============================================================
 # ARRANQUE
