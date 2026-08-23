@@ -2336,7 +2336,7 @@ def generar_pdf_simulacion():
         return jsonify({'error': str(e)}), 500
 
 # ============================================================
-# ENDPOINT: /api/optimizar-cuadrillas (Simulador de Tráfico de Redes)
+# ENDPOINT: /api/optimizar-cuadrillas (CANTV)
 # ============================================================
 @app.route('/api/optimizar-cuadrillas', methods=['POST'])
 def agrupar_reportes():
@@ -2348,13 +2348,19 @@ def agrupar_reportes():
         region = data.get('region', 'Región Capital')
         eps_km = data.get('eps_km', 0.2)
         min_samples = data.get('min_samples', 2)
+        municipio = data.get('municipio')          
+        num_cuadrillas = data.get('num_cuadrillas', 10)  
+        priorizar = data.get('priorizar_instituciones', False)  
 
         # Ejecutar algoritmo
         resultado = procesar_agrupacion_reportes(
             num_reportes=num_reportes,
             region=region,
             eps_km=eps_km,
-            min_samples=min_samples
+            min_samples=min_samples,
+            municipio=municipio,
+            num_cuadrillas=num_cuadrillas,
+            priorizar_instituciones=priorizar
         )
 
         # Extraer datos del lead
