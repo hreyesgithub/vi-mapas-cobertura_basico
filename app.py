@@ -2357,9 +2357,47 @@ def agrupar_reportes():
             min_samples=min_samples
         )
 
-        return jsonify(resultado), 200
+        # Extraer datos del lead
+        email = data.get('email')
+        nombre = data.get('nombre')
+        organismo = data.get('organismo') or data.get('empresa', 'No especificado')
+
+        # Guardar lead en Supabase si se proporciona email
+        if email:
+            metadata = {
+                'nombre': nombre,
+                'organismo': organismo,
+                'parametros': {
+                    'num_reportes': num_reportes,
+                    'region': region,
+                    'eps_km': eps_km,
+                    'min_samples': min_samples
+                },
+                'estadisticas': resultado.get('estadisticas')
+            }
+            guardado, msg = guardar_lead_en_supabase(
+                email=email,
+                industry=organismo,
+                product='optimizar_cuadrillas',
+                source='web',
+                metadata=metadata,
+                template_used='optimizar_cuadrillas'
+            )
+        else:
+            guardado = False
+            msg = "No se proporcionó email (opcional)"
+
+        # Fusionar el resultado del algoritmo con el estado del guardado
+        respuesta = {
+            **resultado,
+            'guardado': guardado,
+            'mensaje_guardado': msg
+        }
+
+        return jsonify(respuesta), 200
 
     except Exception as e:
+        print(f"❌ Error en /api/optimizar-cuadrillas: {e}")
         return jsonify({
             "error": "Error interno al procesar la agrupación de reportes",
             "detalle": str(e)
