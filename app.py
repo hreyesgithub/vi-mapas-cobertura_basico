@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
-from pydantic import BaseModel, Field, validator, ValidationError
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 # REPORTLAB
 from reportlab.pdfgen import canvas
@@ -408,7 +408,7 @@ def generar_propuesta_gemini(
 # ============================================================
 def guardar_lead_en_supabase(
     email, industry, product, source, metadata, template_used=None
-):
+    ):
     """
     Guarda un lead en Supabase usando la API REST con returning='minimal'.
     Devuelve: (guardado_exitoso, mensaje_guardado)
@@ -771,7 +771,7 @@ def verificar_creditos(email):
 # ============================================================
 def generar_propuesta_template(
     nombre_cliente, nombre_proyecto, servicios, detalles, tono
-):
+    ):
     """Genera una propuesta profesional usando plantillas predefinidas."""
 
     # Mapeo de tonos
@@ -1050,7 +1050,8 @@ class DiagnosticoRequest(BaseModel):
     costos_indexados: float = Field(..., ge=0, le=100)
     principal_dolor: str = Field(..., regex="^(liquidez|margen|precios|regulacion)$") # type:ignore
 
-    @validator("sector")
+    @field_validator("sector")
+    @classmethod
     def validate_sector(cls, v):
         sectores_validos = [
             "comercio",
@@ -1068,7 +1069,7 @@ class DiagnosticoRequest(BaseModel):
 # -------------------- LÓGICA DE CÁLCULO --------------------
 def calcular_vulnerabilidad(
     margen: float, rotacion: int, costos_idx: float, dolor: str
-) -> dict:
+    ) -> dict:
     # Factor de inflación anualizada
     INFLACION_ANUAL = 611.0
     inflacion_mensual = (1 + INFLACION_ANUAL / 100) ** (1 / 12) - 1
