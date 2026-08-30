@@ -4,11 +4,14 @@ import random
 import io
 import json
 import requests
+import uuid
 from datetime import datetime, timedelta
 
 # FLASK
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+
+from pydantic import BaseModel, Field, validator, ValidationError
 
 # REPORTLAB
 from reportlab.pdfgen import canvas
@@ -28,7 +31,14 @@ import time
 from collections import defaultdict
 
 # IMPORTAR ARCHIVOS
-from utilidades.turnos_optimizer import ejecutar_algoritmo_genetico, obtener_dias_mes, obtener_dias_por_tipo,  DiaSemana, TipoTurno, BLOQUES_HORARIOS
+from utilidades.turnos_optimizer import (
+    ejecutar_algoritmo_genetico,
+    obtener_dias_mes,
+    obtener_dias_por_tipo,
+    DiaSemana,
+    TipoTurno,
+    BLOQUES_HORARIOS,
+)
 from utilidades.simulador import simular_trafico
 from utilidades.backend_agrupacion import procesar_agrupacion_reportes
 from utilidades.biomimetica_electrica import RedElectrica
@@ -36,7 +46,7 @@ from utilidades.reuso_freq_link_microwave import (
     generar_torres,
     construir_grafo,
     welsh_powell,
-    exportar_json_estructura
+    exportar_json_estructura,
 )
 
 # SUPABASE
@@ -166,6 +176,7 @@ RF = {
 
 # -------------------- INSTANCIA GLOBAL DE LA RED --------------------
 red = RedElectrica()
+
 
 # ============================================================
 # 4. ALGORITMOS DE PROPAGACIÓN Y BRESENHAM (PYTHON)
@@ -356,7 +367,7 @@ def diagnosticar_interferencias(respuestas):
 # ============================================================
 def generar_propuesta_gemini(
     nombre_cliente, nombre_proyecto, servicios, detalles, tono
-    ):
+):
     """
     Genera una propuesta comercial usando Gemini Flash.
     Retorna el texto generado.
@@ -395,7 +406,9 @@ def generar_propuesta_gemini(
 # ============================================================
 # FUNCIONES GENERALES
 # ============================================================
-def guardar_lead_en_supabase(email, industry, product, source, metadata, template_used=None):
+def guardar_lead_en_supabase(
+    email, industry, product, source, metadata, template_used=None
+):
     """
     Guarda un lead en Supabase usando la API REST con returning='minimal'.
     Devuelve: (guardado_exitoso, mensaje_guardado)
@@ -406,27 +419,27 @@ def guardar_lead_en_supabase(email, industry, product, source, metadata, templat
         return False, "Email no proporcionado"
 
     payload = {
-        'email': email,
-        'industry': industry or 'No especificado',
-        'product': product,
-        'source': source,
-        'metadata': metadata or {},
-        'template_used': template_used,
-        'generated_at': datetime.utcnow().isoformat()
+        "email": email,
+        "industry": industry or "No especificado",
+        "product": product,
+        "source": source,
+        "metadata": metadata or {},
+        "template_used": template_used,
+        "generated_at": datetime.utcnow().isoformat(),
     }
     # Remover campos None
     payload = {k: v for k, v in payload.items() if v is not None}
 
     try:
-        response = supabase.table('leads').insert(payload, returning='minimal').execute() # type:ignore
-        
+        response = supabase.table("leads").insert(payload, returning="minimal").execute()  # type: ignore
+
         # Verificar si hay error en la respuesta
-        if hasattr(response, 'error') and response.error: # type:ignore
-            return False, f"Error en Supabase: {response.error}" # type:ignore
-        
+        if hasattr(response, "error") and response.error:  # type: ignore
+            return False, f"Error en Supabase: {response.error}"  # type: ignore
+
         # Si llegamos aquí, la inserción fue exitosa
         return True, "Lead guardado exitosamente"
-        
+
     except Exception as e:
         return False, f"Error al guardar: {str(e)}"
 
@@ -758,7 +771,7 @@ def verificar_creditos(email):
 # ============================================================
 def generar_propuesta_template(
     nombre_cliente, nombre_proyecto, servicios, detalles, tono
-    ):
+):
     """Genera una propuesta profesional usando plantillas predefinidas."""
 
     # Mapeo de tonos
@@ -1025,6 +1038,161 @@ def optimize_aps(width, height, num_aps, walls, iterations=150):
 
 
 # ============================================================
+# 7 . ALGORITMO DE SALUD EMPRESARIAL (SIMULATED ANNEALING LIGERO)
+# ============================================================
+# -------------------- MODELOS DE ENTRADA (Pydantic) --------------------
+# Seguimos usando Pydantic para validar los datos que entran al JSON de forma estricta
+class DiagnosticoRequest(BaseModel):
+    razon_social: str = Field(..., max_length=100)
+    sector: str = Field(..., max_length=50)
+    margen_bruto: float = Field(..., ge=0, le=100)
+    dias_rotacion: int = Field(..., ge=1, le=365)
+    costos_indexados: float = Field(..., ge=0, le=100)
+    principal_dolor: str = Field(..., regex="^(liquidez|margen|precios|regulacion)$") # type:ignore
+
+    @validator("sector")
+    def validate_sector(cls, v):
+        sectores_validos = [
+            "comercio",
+            "servicios",
+            "manufactura",
+            "tecnologia",
+            "agroindustria",
+            "otros",
+        ]
+        if v not in sectores_validos:
+            raise ValueError(f"Sector debe ser uno de {sectores_validos}")
+        return v
+
+
+# -------------------- LÓGICA DE CÁLCULO --------------------
+def calcular_vulnerabilidad(
+    margen: float, rotacion: int, costos_idx: float, dolor: str
+) -> dict:
+    # Factor de inflación anualizada
+    INFLACION_ANUAL = 611.0
+    inflacion_mensual = (1 + INFLACION_ANUAL / 100) ** (1 / 12) - 1
+
+    # 1. Índice base por margen
+    puntaje_margen = max(0, (20 - margen) * 2.5)
+    puntaje_margen = min(puntaje_margen, 50)
+
+    # 2. Riesgo por rotación
+    perdida_por_rotacion = (rotacion / 30) * inflacion_mensual * 100
+    puntaje_rotacion = min(perdida_por_rotacion * 0.8, 30)
+
+    # 3. Riesgo por costos indexados
+    puntaje_costos = (costos_idx / 100) * 20
+
+    # 4. Factor por dolor principal
+    factores_dolor = {"liquidez": 1.2, "margen": 1.0, "precios": 0.8, "regulacion": 0.6}
+    factor = factores_dolor.get(dolor, 1.0)
+
+    indice_bruto = (puntaje_margen + puntaje_rotacion + puntaje_costos) * factor
+    indice = min(round(indice_bruto), 100)
+
+    # Determinar nivel y mensaje con Material Icons
+    if indice >= 70:
+        nivel = "rojo"
+        alerta = '<span class="material-icons visual-anchor">error</span> Su flujo de caja está en riesgo crítico. La inflación y los costos indexados erosionan rápidamente su margen. Necesita acción inmediata.'
+        punto_equilibrio = (
+            "Recomendamos reposición cada 15 días y renegociación de costos indexados."
+        )
+    elif indice >= 40:
+        nivel = "amarillo"
+        alerta = '<span class="material-icons visual-anchor">warning_amber</span> Su empresa muestra signos de vulnerabilidad. La rotación de inventario y los costos fijos requieren ajustes estratégicos.'
+        punto_equilibrio = (
+            "Considere reducir días de inventario y cubrir costos en dólares."
+        )
+    else:
+        nivel = "verde"
+        alerta = '<span class="material-icons visual-anchor">check_circle</span> Su empresa goza de buena salud operativa. Monitoree la inflación y mantenga su eficiencia.'
+        punto_equilibrio = "Mantenga su estrategia actual, revise precios mensualmente."
+
+    return {
+        "indice": indice,
+        "nivel": nivel,
+        "alerta": alerta,
+        "punto_equilibrio": punto_equilibrio,
+        "detalles": {
+            "puntaje_margen": round(puntaje_margen, 1),
+            "puntaje_rotacion": round(puntaje_rotacion, 1),
+            "puntaje_costos": round(puntaje_costos, 1),
+            "factor_dolor": factor,
+            "inflacion_mensual_estimada": round(inflacion_mensual * 100, 2),
+        },
+    }
+
+
+# -------------------- ENDPOINTS --------------------
+@app.route("/api/v1/diagnostico", methods=["POST"])
+def diagnosticar():
+    try:
+        # Extraer JSON de la solicitud de Flask
+        json_data = request.get_json()
+        if not json_data:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "detail": "Cuerpo de solicitud inválido o ausente",
+                    }
+                ),
+                400,
+            )
+
+        # Validar los datos manualmente con Pydantic
+        try:
+            data = DiagnosticoRequest(**json_data)
+        except ValidationError as e:
+            return jsonify({"status": "error", "detail": e.errors()}), 422
+
+        # 1. Calcular diagnóstico
+        resultado = calcular_vulnerabilidad(
+            margen=data.margen_bruto,
+            rotacion=data.dias_rotacion,
+            costos_idx=data.costos_indexados,
+            dolor=data.principal_dolor,
+        )
+
+        # 2. Preparar registro para Supabase
+        registro = {
+            "razon_social": data.razon_social,
+            "sector": data.sector,
+            "margen_bruto": data.margen_bruto,
+            "dias_rotacion": data.dias_rotacion,
+            "costos_indexados": data.costos_indexados,
+            "principal_dolor": data.principal_dolor,
+            "indice_vulnerabilidad": resultado["indice"],
+            "resultado_json": resultado,
+        }
+
+        # 3. Insertar en Supabase
+        try:
+            supabase.table("leads_simulador").insert(registro).execute()
+            logger.info(f"Lead guardado para {data.razon_social}")
+        except Exception as e:
+            logger.error(f"Error al guardar en Supabase: {e}")
+
+        # 4. Respuesta exitosa
+        return (
+            jsonify(
+                {
+                    "status": "success",
+                    "diagnostico": resultado,
+                    "lead_id": str(uuid.uuid4()),
+                }
+            ),
+            200,
+        )
+
+    except Exception as e:
+        logger.exception("Error interno en /diagnostico")
+        return jsonify({"status": "error", "detail": str(e)}), 500
+
+
+# -------------------- HEALTH CHECK (para Render) --------------------
+# ============================================================
 # ENDPOINT: /health
 # ============================================================
 @app.route("/health", methods=["GET"])
@@ -1236,7 +1404,7 @@ def health():
 
 
 @app.route("/api/diagnosticar-interferencias", methods=["POST"])
-def diagnosticar():
+def diagnosticar_interferencias_endpoint():
     try:
         data = request.get_json()
         print(f"📩 Payload recibido: {json.dumps(data, indent=2)}")  # <-- LOG
@@ -1830,19 +1998,24 @@ def generar_propuesta():
         if not data:
             return jsonify({"error": "Faltan datos"}), 400
 
-         # Obtener email e industry (ahora obligatorios)
-        email = data.get('email', '').strip()
-        industry = data.get('industry', 'No especificado')
+        # Obtener email e industry (ahora obligatorios)
+        email = data.get("email", "").strip()
+        industry = data.get("industry", "No especificado")
 
-        if not email or '@' not in email:
-            return jsonify({'error': 'Correo obligatorio para generar propuestas'}), 400
+        if not email or "@" not in email:
+            return jsonify({"error": "Correo obligatorio para generar propuestas"}), 400
 
-         # Verificar créditos disponibles
+        # Verificar créditos disponibles
         tiene_creditos, usos_hoy, limite = verificar_creditos(email)
         if not tiene_creditos:
-            return jsonify({
-                'error': f'Has alcanzado el límite diario de {limite} propuestas. Vuelve mañana.'
-            }), 429  # Too Many Requests
+            return (
+                jsonify(
+                    {
+                        "error": f"Has alcanzado el límite diario de {limite} propuestas. Vuelve mañana."
+                    }
+                ),
+                429,
+            )  # Too Many Requests
 
         nombre_cliente = data.get("nombre_cliente", "").strip()
         nombre_proyecto = data.get("nombre_proyecto", "").strip()
@@ -1860,21 +2033,21 @@ def generar_propuesta():
 
         # Guardar lead en Supabase (registrar el uso)
         metadata = {
-            'nombre_cliente': nombre_cliente,
-            'nombre_proyecto': nombre_proyecto,
-            'servicios': servicios,
-            'tono': tono,
-            'usos_hoy': usos_hoy + 1,
-            'limite_diario': limite
+            "nombre_cliente": nombre_cliente,
+            "nombre_proyecto": nombre_proyecto,
+            "servicios": servicios,
+            "tono": tono,
+            "usos_hoy": usos_hoy + 1,
+            "limite_diario": limite,
         }
 
         guardado, msg = guardar_lead_en_supabase(
             email=email,
             industry=industry,
-            product='proposal_generator',
-            source='web',
+            product="proposal_generator",
+            source="web",
             metadata=metadata,
-            template_used='proposal_generator'
+            template_used="proposal_generator",
         )
 
         return jsonify(
@@ -1974,29 +2147,30 @@ def generar_pdf_propuesta():
         print(f"❌ Error en PDF: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # ============================================================
 # ENDPOINT: /api/optimizar-turnos
 # ============================================================
-@app.route('/api/optimizar-turnos', methods=['POST'])
+@app.route("/api/optimizar-turnos", methods=["POST"])
 def optimizar_turnos():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
+            return jsonify({"error": "Faltan datos"}), 400
 
-        empleados = data.get('empleados', [])
-        requerimientos = data.get('requerimientos', {})
-        anio = data.get('anio', 2025)
-        mes = data.get('mes', 5)
-        tamano_poblacion = data.get('tamano_poblacion', 30)
-        generaciones = data.get('generaciones', 50)
-        tasa_mutacion = data.get('tasa_mutacion', 0.3)
-        email = data.get('email')
-        industry = data.get('industry', 'No especificado')
+        empleados = data.get("empleados", [])
+        requerimientos = data.get("requerimientos", {})
+        anio = data.get("anio", 2025)
+        mes = data.get("mes", 5)
+        tamano_poblacion = data.get("tamano_poblacion", 30)
+        generaciones = data.get("generaciones", 50)
+        tasa_mutacion = data.get("tasa_mutacion", 0.3)
+        email = data.get("email")
+        industry = data.get("industry", "No especificado")
 
         # Validaciones
         if not empleados or not requerimientos:
-            return jsonify({'error': 'Se necesitan empleados y requerimientos'}), 400
+            return jsonify({"error": "Se necesitan empleados y requerimientos"}), 400
 
         # Ejecutar algoritmo
         horario_optimo, costo_total = ejecutar_algoritmo_genetico(
@@ -2005,7 +2179,7 @@ def optimizar_turnos():
 
         # Generar planificación mensual
         dias_mes = obtener_dias_mes(anio, mes)
-        planificacion_diaria = defaultdict(lambda: defaultdict(list)) #type: ignore
+        planificacion_diaria = defaultdict(lambda: defaultdict(list))  # type: ignore
         for fecha, dia_semana in dias_mes:
             if dia_semana == DiaSemana.SABADO:
                 tipo_turno = TipoTurno.SABADO.value
@@ -2015,18 +2189,18 @@ def optimizar_turnos():
                 tipo_turno = TipoTurno.LUNES_VIERNES.value
             for bloque, emp_nombres in horario_optimo.get(tipo_turno, {}).items():
                 for emp in emp_nombres:
-                    planificacion_diaria[fecha.strftime('%Y-%m-%d')][bloque].append(emp)
+                    planificacion_diaria[fecha.strftime("%Y-%m-%d")][bloque].append(emp)
 
         # Resumen de horas por empleado
-        horas_empleados = defaultdict(int) #type: ignore
-        dias_trabajados_por_empleado = defaultdict(set) #type: ignore
+        horas_empleados = defaultdict(int)  # type: ignore
+        dias_trabajados_por_empleado = defaultdict(set)  # type: ignore
 
         for tipo_turno, bloques in horario_optimo.items():
-            dias = obtener_dias_por_tipo(TipoTurno(tipo_turno)) #type: ignore
+            dias = obtener_dias_por_tipo(TipoTurno(tipo_turno))  # type: ignore
 
             for bloque, emp_nombres in bloques.items():
                 for emp in emp_nombres:
-                    horas_empleados[emp] += 8 * len(dias) # type: ignore
+                    horas_empleados[emp] += 8 * len(dias)  # type: ignore
                     for dia in dias:  # type: ignore
                         dias_trabajados_por_empleado[emp].add(dia)
 
@@ -2035,53 +2209,59 @@ def optimizar_turnos():
         msg = "No se proporcionó email (opcional)"
         if email:
             metadata = {
-                'empleados': len(empleados),
-                'costo_total': costo_total,
-                'horario_optimo': horario_optimo,
-                'mes': mes,
-                'anio': anio
+                "empleados": len(empleados),
+                "costo_total": costo_total,
+                "horario_optimo": horario_optimo,
+                "mes": mes,
+                "anio": anio,
             }
             guardado, msg = guardar_lead_en_supabase(
                 email=email,
                 industry=industry,
-                product='turnos_optimizer',
-                source='web',
+                product="turnos_optimizer",
+                source="web",
                 metadata=metadata,
-                template_used='turnos_optimizer'
+                template_used="turnos_optimizer",
             )
 
-        return jsonify({
-            'horario_optimo': horario_optimo,
-            'costo_total': round(costo_total, 2),
-            'planificacion_diaria': dict(planificacion_diaria),
-            'horas_por_empleado': dict(horas_empleados),
-            'dias_trabajados_por_empleado': {k: [d.name for d in v] for k, v in dias_trabajados_por_empleado.items()},
-            'guardado': guardado,
-            'mensaje_guardado': msg
-        })
+        return jsonify(
+            {
+                "horario_optimo": horario_optimo,
+                "costo_total": round(costo_total, 2),
+                "planificacion_diaria": dict(planificacion_diaria),
+                "horas_por_empleado": dict(horas_empleados),
+                "dias_trabajados_por_empleado": {
+                    k: [d.name for d in v]
+                    for k, v in dias_trabajados_por_empleado.items()
+                },
+                "guardado": guardado,
+                "mensaje_guardado": msg,
+            }
+        )
 
     except Exception as e:
         print(f"❌ Error en /api/optimizar-turnos: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/generar-pdf-turnos', methods=['POST'])
+
+@app.route("/api/generar-pdf-turnos", methods=["POST"])
 def generar_pdf_turnos():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
+            return jsonify({"error": "Faltan datos"}), 400
 
-        email = data.get('email', '').strip()
-        industry = data.get('industry', 'No especificado')
-        horario_optimo = data.get('horario_optimo', {})
-        costo_total = data.get('costo_total', 0)
-        planificacion_diaria = data.get('planificacion_diaria', {})
-        horas_por_empleado = data.get('horas_por_empleado', {})
-        anio = data.get('anio', 2025)
-        mes = data.get('mes', 5)
+        email = data.get("email", "").strip()
+        industry = data.get("industry", "No especificado")
+        horario_optimo = data.get("horario_optimo", {})
+        costo_total = data.get("costo_total", 0)
+        planificacion_diaria = data.get("planificacion_diaria", {})
+        horas_por_empleado = data.get("horas_por_empleado", {})
+        anio = data.get("anio", 2025)
+        mes = data.get("mes", 5)
 
-        if not email or '@' not in email:
-            return jsonify({'error': 'Correo inválido'}), 400
+        if not email or "@" not in email:
+            return jsonify({"error": "Correo inválido"}), 400
 
         # Generar PDF con ReportLab
         from reportlab.pdfgen import canvas
@@ -2103,7 +2283,9 @@ def generar_pdf_turnos():
 
         c.setFont("Helvetica", 10)
         c.setFillColor(colors.grey)
-        c.drawString(margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        c.drawString(
+            margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        )
         y -= 25
         c.setFillColor(colors.black)
 
@@ -2154,7 +2336,11 @@ def generar_pdf_turnos():
         y = margin
         c.setFont("Helvetica-Oblique", 8)
         c.setFillColor(colors.grey)
-        c.drawString(margin, y, "Este informe fue generado automáticamente por Venezuela Insights.")
+        c.drawString(
+            margin,
+            y,
+            "Este informe fue generado automáticamente por Venezuela Insights.",
+        )
         c.drawRightString(page_width - margin, y, "v1.0 - IA Insights")
 
         c.showPage()
@@ -2165,77 +2351,74 @@ def generar_pdf_turnos():
             buffer,
             as_attachment=True,
             download_name=f"informe_turnos_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-            mimetype='application/pdf'
+            mimetype="application/pdf",
         )
 
     except Exception as e:
         print(f"❌ Error en /api/generar-pdf-turnos: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 # ============================================================
 # ENDPOINT: /api/simular-trafico (Simulador de Tráfico de Redes)
 # ============================================================
-@app.route('/api/simular-trafico', methods=['POST'])
+@app.route("/api/simular-trafico", methods=["POST"])
 def api_simular_trafico():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
+            return jsonify({"error": "Faltan datos"}), 400
 
         escenario = {
-            'num_aps': data.get('num_aps', 2),
-            'capacidad_ap': data.get('capacidad_ap', 450),
-            'num_usuarios': data.get('num_usuarios', 50),
-            'tipo_trafico': data.get('tipo_trafico', 'mixto'),
-            'tiempo_simulacion': data.get('tiempo_simulacion', 50),
-            'fallo_ap': data.get('fallo_ap', None)  # Si es None, no hay fallo
+            "num_aps": data.get("num_aps", 2),
+            "capacidad_ap": data.get("capacidad_ap", 450),
+            "num_usuarios": data.get("num_usuarios", 50),
+            "tipo_trafico": data.get("tipo_trafico", "mixto"),
+            "tiempo_simulacion": data.get("tiempo_simulacion", 50),
+            "fallo_ap": data.get("fallo_ap", None),  # Si es None, no hay fallo
         }
 
         resultados = simular_trafico(escenario)
 
         # Guardar lead si se proporciona email (opcional)
-        email = data.get('email')
+        email = data.get("email")
         if email:
-            metadata = {
-                'escenario': escenario,
-                'resultados': resultados
-            }
+            metadata = {"escenario": escenario, "resultados": resultados}
             guardado, msg = guardar_lead_en_supabase(
                 email=email,
-                industry=data.get('industry', 'No especificado'),
-                product='traffic_simulator',
-                source='web',
+                industry=data.get("industry", "No especificado"),
+                product="traffic_simulator",
+                source="web",
                 metadata=metadata,
-                template_used='traffic_simulator'
+                template_used="traffic_simulator",
             )
         else:
             guardado = False
             msg = "No se proporcionó email (opcional)"
 
-        return jsonify({
-            'resultados': resultados,
-            'guardado': guardado,
-            'mensaje_guardado': msg
-        })
+        return jsonify(
+            {"resultados": resultados, "guardado": guardado, "mensaje_guardado": msg}
+        )
 
     except Exception as e:
         print(f"❌ Error en /api/simular-trafico: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/api/generar-pdf-simulacion', methods=['POST'])
+
+@app.route("/api/generar-pdf-simulacion", methods=["POST"])
 def generar_pdf_simulacion():
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': 'Faltan datos'}), 400
+            return jsonify({"error": "Faltan datos"}), 400
 
-        email = data.get('email', '').strip()
-        industry = data.get('industry', 'No especificado')
-        resultados = data.get('resultados', {})
-        escenario = data.get('escenario', {})
+        email = data.get("email", "").strip()
+        industry = data.get("industry", "No especificado")
+        resultados = data.get("resultados", {})
+        escenario = data.get("escenario", {})
 
-        if not email or '@' not in email:
-            return jsonify({'error': 'Correo inválido'}), 400
+        if not email or "@" not in email:
+            return jsonify({"error": "Correo inválido"}), 400
 
         # Generar PDF con ReportLab
         from reportlab.pdfgen import canvas
@@ -2257,7 +2440,9 @@ def generar_pdf_simulacion():
 
         c.setFont("Helvetica", 10)
         c.setFillColor(colors.grey)
-        c.drawString(margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        c.drawString(
+            margin, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+        )
         y -= 25
         c.setFillColor(colors.black)
 
@@ -2281,13 +2466,21 @@ def generar_pdf_simulacion():
         c.setFont("Helvetica", 10)
         c.drawString(margin, y, f"• APs: {escenario.get('num_aps', 'N/A')}")
         y -= 15
-        c.drawString(margin, y, f"• Capacidad por AP: {escenario.get('capacidad_ap', 'N/A')} Mbps")
+        c.drawString(
+            margin,
+            y,
+            f"• Capacidad por AP: {escenario.get('capacidad_ap', 'N/A')} Mbps",
+        )
         y -= 15
         c.drawString(margin, y, f"• Usuarios: {escenario.get('num_usuarios', 'N/A')}")
         y -= 15
-        c.drawString(margin, y, f"• Tipo de tráfico: {escenario.get('tipo_trafico', 'N/A')}")
+        c.drawString(
+            margin, y, f"• Tipo de tráfico: {escenario.get('tipo_trafico', 'N/A')}"
+        )
         y -= 15
-        c.drawString(margin, y, f"• Fallo simulado: {escenario.get('fallo_ap', 'Sin fallo')}")
+        c.drawString(
+            margin, y, f"• Fallo simulado: {escenario.get('fallo_ap', 'Sin fallo')}"
+        )
         y -= 25
 
         # Resultados por AP
@@ -2295,18 +2488,26 @@ def generar_pdf_simulacion():
         c.drawString(margin, y, "Resultados por AP")
         y -= 18
         c.setFont("Helvetica", 10)
-        stats = resultados.get('estadisticas', {})
+        stats = resultados.get("estadisticas", {})
         for ap, data in stats.items():
-            carga_prom = data.get('promedio', 0)
-            carga_max = data.get('maximo', 0)
-            porcentaje = round((carga_prom / escenario.get('capacidad_ap', 450)) * 100) if escenario.get('capacidad_ap') else 0
-            c.drawString(margin, y, f"AP{int(ap)+1}: Promedio {carga_prom} Mbps, Pico {carga_max} Mbps ({porcentaje}% de capacidad)")
+            carga_prom = data.get("promedio", 0)
+            carga_max = data.get("maximo", 0)
+            porcentaje = (
+                round((carga_prom / escenario.get("capacidad_ap", 450)) * 100)
+                if escenario.get("capacidad_ap")
+                else 0
+            )
+            c.drawString(
+                margin,
+                y,
+                f"AP{int(ap)+1}: Promedio {carga_prom} Mbps, Pico {carga_max} Mbps ({porcentaje}% de capacidad)",
+            )
             y -= 15
 
         y -= 10
 
         # Alertas
-        alertas = resultados.get('alertas', [])
+        alertas = resultados.get("alertas", [])
         if alertas:
             c.setFont("Helvetica-Bold", 12)
             c.setFillColor(colors.red)
@@ -2326,7 +2527,11 @@ def generar_pdf_simulacion():
         y = margin
         c.setFont("Helvetica-Oblique", 8)
         c.setFillColor(colors.grey)
-        c.drawString(margin, y, "Este informe fue generado automáticamente por el Simulador de Tráfico de Redes de Venezuela Insights.")
+        c.drawString(
+            margin,
+            y,
+            "Este informe fue generado automáticamente por el Simulador de Tráfico de Redes de Venezuela Insights.",
+        )
         c.drawRightString(page_width - margin, y, "v1.0 - IA Insights")
 
         c.showPage()
@@ -2337,29 +2542,30 @@ def generar_pdf_simulacion():
             buffer,
             as_attachment=True,
             download_name=f"informe_simulacion_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-            mimetype='application/pdf'
+            mimetype="application/pdf",
         )
 
     except Exception as e:
         print(f"❌ Error en /api/generar-pdf-simulacion: {e}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
 
 # ============================================================
 # ENDPOINT: /api/optimizar-cuadrillas (CANTV)
 # ============================================================
-@app.route('/api/optimizar-cuadrillas', methods=['POST'])
+@app.route("/api/optimizar-cuadrillas", methods=["POST"])
 def agrupar_reportes():
     try:
         # Extraer cuerpo JSON (opcional: permite modificar parámetros desde el frontend)
         data = request.get_json() or {}
 
-        num_reportes = data.get('num_reportes', 1200)
-        region = data.get('region', 'Región Capital')
-        eps_km = data.get('eps_km', 0.2)
-        min_samples = data.get('min_samples', 2)
-        municipio = data.get('municipio')          
-        num_cuadrillas = data.get('num_cuadrillas', 10)  
-        priorizar = data.get('priorizar_instituciones', False)  
+        num_reportes = data.get("num_reportes", 1200)
+        region = data.get("region", "Región Capital")
+        eps_km = data.get("eps_km", 0.2)
+        min_samples = data.get("min_samples", 2)
+        municipio = data.get("municipio")
+        num_cuadrillas = data.get("num_cuadrillas", 10)
+        priorizar = data.get("priorizar_instituciones", False)
 
         # Ejecutar algoritmo
         resultado = procesar_agrupacion_reportes(
@@ -2369,80 +2575,85 @@ def agrupar_reportes():
             min_samples=min_samples,
             municipio=municipio,
             num_cuadrillas=num_cuadrillas,
-            priorizar_instituciones=priorizar
+            priorizar_instituciones=priorizar,
         )
 
         # Extraer datos del lead
-        email = data.get('email')
-        nombre = data.get('nombre')
-        organismo = data.get('organismo') or data.get('empresa', 'No especificado')
+        email = data.get("email")
+        nombre = data.get("nombre")
+        organismo = data.get("organismo") or data.get("empresa", "No especificado")
 
         # Guardar lead en Supabase si se proporciona email
         if email:
             metadata = {
-                'nombre': nombre,
-                'organismo': organismo,
-                'parametros': {
-                    'num_reportes': num_reportes,
-                    'region': region,
-                    'eps_km': eps_km,
-                    'min_samples': min_samples
+                "nombre": nombre,
+                "organismo": organismo,
+                "parametros": {
+                    "num_reportes": num_reportes,
+                    "region": region,
+                    "eps_km": eps_km,
+                    "min_samples": min_samples,
                 },
-                'estadisticas': resultado.get('estadisticas')
+                "estadisticas": resultado.get("estadisticas"),
             }
             guardado, msg = guardar_lead_en_supabase(
                 email=email,
                 industry=organismo,
-                product='optimizar_cuadrillas',
-                source='web',
+                product="optimizar_cuadrillas",
+                source="web",
                 metadata=metadata,
-                template_used='optimizar_cuadrillas'
+                template_used="optimizar_cuadrillas",
             )
         else:
             guardado = False
             msg = "No se proporcionó email (opcional)"
 
         # Fusionar el resultado del algoritmo con el estado del guardado
-        respuesta = {
-            **resultado,
-            'guardado': guardado,
-            'mensaje_guardado': msg
-        }
+        respuesta = {**resultado, "guardado": guardado, "mensaje_guardado": msg}
 
         return jsonify(respuesta), 200
 
     except Exception as e:
         print(f"❌ Error en /api/optimizar-cuadrillas: {e}")
-        return jsonify({
-            "error": "Error interno al procesar la agrupación de reportes",
-            "detalle": str(e)
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": "Error interno al procesar la agrupación de reportes",
+                    "detalle": str(e),
+                }
+            ),
+            500,
+        )
+
 
 # ============================================================
 # ENDPOINT: /api/bio-electrica (CANTV)
 # ============================================================
-@app.route('/api/bio-electrica/estado')
+@app.route("/api/bio-electrica/estado")
 def api_estado():
     return jsonify(red.obtener_estado())
 
-@app.route('/api/bio-electrica/paso', methods=['POST'])
+
+@app.route("/api/bio-electrica/paso", methods=["POST"])
 def api_paso():
     data = request.get_json()
-    modo = data.get('modo', 'biomimetico')
+    modo = data.get("modo", "biomimetico")
     red.modo = modo
     estado = red.paso_simulacion()
     return jsonify(estado)
 
-@app.route('/api/bio-electrica/reset', methods=['POST'])
+
+@app.route("/api/bio-electrica/reset", methods=["POST"])
 def api_reset():
     global red
     red = RedElectrica()
-    return jsonify({'status': 'reset'})
+    return jsonify({"status": "reset"})
+
 
 # ============================================================
 # ENDPOINT: /api/optimizar-reuso (Microondas)
 # ============================================================
-@app.route('/api/optimizar-reuso', methods=['POST'])
+@app.route("/api/optimizar-reuso", methods=["POST"])
 def optimizar_reuso():
     """
     Endpoint para optimizar el reuso de frecuencias en enlaces de microondas.
@@ -2458,8 +2669,8 @@ def optimizar_reuso():
         data = request.get_json() or {}
 
         # Parámetros de simulación
-        num_torres = data.get('num_torres', 15)
-        torres_personalizadas = data.get('torres_personalizadas', None)
+        num_torres = data.get("num_torres", 15)
+        torres_personalizadas = data.get("torres_personalizadas", None)
 
         # Si se envían torres personalizadas, usarlas; si no, generar aleatorias
         if torres_personalizadas and len(torres_personalizadas) > 0:
@@ -2476,65 +2687,69 @@ def optimizar_reuso():
         # Armar estructura de respuesta (similar al JSON esperado por frontend)
         nodos = []
         for i, t in enumerate(torres):
-            nodos.append({
-                "id": i,
-                "lat": t["lat"],
-                "lon": t["lon"],
-                "azimuth": t["azimuth"],
-                "banda": t["banda"],
-                "canal": colores[i]
-            })
+            nodos.append(
+                {
+                    "id": i,
+                    "lat": t["lat"],
+                    "lon": t["lon"],
+                    "azimuth": t["azimuth"],
+                    "banda": t["banda"],
+                    "canal": colores[i],
+                }
+            )
 
         resultado = {
             "nodos": nodos,
             "aristas": aristas,
             "canales_tradicionales": len(torres),
-            "canales_optimizados": num_colores
+            "canales_optimizados": num_colores,
         }
 
         # --- Captura de lead (similar al ejemplo) ---
-        email = data.get('email')
-        nombre = data.get('nombre')
-        organismo = data.get('organismo') or data.get('empresa', 'No especificado')
+        email = data.get("email")
+        nombre = data.get("nombre")
+        organismo = data.get("organismo") or data.get("empresa", "No especificado")
 
         guardado = False
         msg = "No se proporcionó email (opcional)"
         if email:
             metadata = {
-                'nombre': nombre,
-                'organismo': organismo,
-                'parametros': {
-                    'num_torres': num_torres,
-                    'torres_personalizadas': bool(torres_personalizadas)
+                "nombre": nombre,
+                "organismo": organismo,
+                "parametros": {
+                    "num_torres": num_torres,
+                    "torres_personalizadas": bool(torres_personalizadas),
                 },
-                'estadisticas': {
-                    'canales_tradicionales': len(torres),
-                    'canales_optimizados': num_colores
-                }
+                "estadisticas": {
+                    "canales_tradicionales": len(torres),
+                    "canales_optimizados": num_colores,
+                },
             }
             guardado, msg = guardar_lead_en_supabase(
                 email=email,
                 industry=organismo,
-                product='reuso_frecuencias',
-                source='web',
+                product="reuso_frecuencias",
+                source="web",
                 metadata=metadata,
-                template_used='reuso_frecuencias'
+                template_used="reuso_frecuencias",
             )
 
-        respuesta = {
-            **resultado,
-            'guardado': guardado,
-            'mensaje_guardado': msg
-        }
+        respuesta = {**resultado, "guardado": guardado, "mensaje_guardado": msg}
 
         return jsonify(respuesta), 200
 
     except Exception as e:
         print(f"❌ Error en /api/optimizar-reuso: {e}")
-        return jsonify({
-            "error": "Error interno al procesar la optimización de reuso",
-            "detalle": str(e)
-        }), 500
+        return (
+            jsonify(
+                {
+                    "error": "Error interno al procesar la optimización de reuso",
+                    "detalle": str(e),
+                }
+            ),
+            500,
+        )
+
 
 # ============================================================
 # ARRANQUE
