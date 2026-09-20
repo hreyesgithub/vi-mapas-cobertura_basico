@@ -1,0 +1,115 @@
+{
+  "generated_at": "2026-09-19T11:47:37.211313+00:00",
+  "data_type": "proxy_ovsp",
+  "methodology_summary": "Índice relativo de severidad eléctrica por estado, derivado de encuestas de percepción (OVSP) y reportes de prensa con cifras concretas de duración de cortes. No es una medición metered directa; ver docstring de este script y README sección correspondiente para la metodología completa.",
+  "sources": [
+    {
+      "id": "ovsp_2024_nacional",
+      "publisher": "Observatorio Venezolano de Servicios Públicos (OVSP), vía Caleidoscopio Humano",
+      "date": "2024-02-01",
+      "finding": "Encuesta nacional: 54% de los hogares reportó cortes diarios; de ese grupo, 69% con cortes de 2 a 6 horas y 9% de 6 a 9 horas. Maracaibo, Mérida, Barinas, Barquisimeto, San Cristóbal, San Fernando de Apure, Valencia y Punto Fijo listadas como las ciudades más afectadas.",
+      "url": "https://caleidohumano.org/ovsp-registro-aumento-significativo-en-las-fallas-electricas-en-todo-el-pais/"
+    },
+    {
+      "id": "diario_los_andes_maracaibo",
+      "publisher": "Diario de Los Andes (vía EFE)",
+      "date": "2024-03-01",
+      "finding": "Testimonio directo de un residente de Maracaibo (Zulia): Corpoelec corta el servicio en su sector aproximadamente 3 horas al día, en turnos rotativos de mañana o noche. Zulia descrito como el estado más golpeado de forma crónica desde 2009.",
+      "url": "https://diariodelosandes.com/venezuela-con-reiterados-cortes-electricos-un-lustro-despues-del-apagon-nacional"
+    },
+    {
+      "id": "eldiario_aragua_carabobo_2026",
+      "publisher": "El Diario",
+      "date": "2026-08-04",
+      "finding": "Protestas en Aragua y Carabobo por racionamiento eléctrico. Sectores puntuales reportaron cortes superiores a 8 horas diarias (Las Parcelas de El Socorro) y superiores a 5 horas diarias (El Naranjal de Naguanagua). Comerciantes de Valencia (Carabobo) reportaron cortes diarios.",
+      "url": "https://eldiario.com/2026/08/04/protestas-aragua-carabobo/"
+    },
+    {
+      "id": "cronica_uno_gran_caracas",
+      "publisher": "Crónica.Uno",
+      "date": "2021-06-01",
+      "finding": "En estudios comparativos por ciudad del OVSP, Caracas aparece consistentemente como la ciudad con menor proporción de residentes reportando fallas de servicios básicos, incluida electricidad, frente al resto del país.",
+      "url": "https://cronica.uno/tag/electricidad/page/10/"
+    },
+    {
+      "id": "ntn24_apagon_nacional_2025",
+      "publisher": "NTN24",
+      "date": "2025-08-22",
+      "finding": "Apagón nacional puntual afectó simultáneamente Miranda, La Guaira, Aragua, Nueva Esparta, Zulia, Carabobo y sectores de Caracas (incluidos Chacao y Baruta). Confirma que el Área Metropolitana de Caracas, aunque comparativamente menos afectada en el día a día, no está exenta de eventos nacionales.",
+      "url": "https://www.ntn24.com/noticias-actualidad/caos-en-varios-estados-de-venezuela-por-apagon-electrico-y-lluvias-575912"
+    }
+  ],
+  "estados": {
+    "zulia": {
+      "label": "Zulia (Maracaibo)",
+      "tier": "alta",
+      "avg_outage_hours_month": 90,
+      "basis": "≈3h/día de corte rotativo reportado de forma sostenida desde 2009 (diario_los_andes_maracaibo) × 30 días.",
+      "source_ids": [
+        "diario_los_andes_maracaibo",
+        "ovsp_2024_nacional"
+      ]
+    },
+    "carabobo": {
+      "label": "Carabobo (Valencia)",
+      "tier": "alta",
+      "avg_outage_hours_month": 85,
+      "basis": "Racionamiento diario confirmado en 2026, con sectores puntuales >5-8h/día; se usa una media estatal conservadora (no el pico de las zonas más golpeadas).",
+      "source_ids": [
+        "eldiario_aragua_carabobo_2026",
+        "ovsp_2024_nacional"
+      ]
+    },
+    "aragua": {
+      "label": "Aragua (Maracay)",
+      "tier": "alta",
+      "avg_outage_hours_month": 85,
+      "basis": "Mismo evento de racionamiento 2026 que Carabobo; protestas conjuntas por cortes diarios en múltiples municipios.",
+      "source_ids": [
+        "eldiario_aragua_carabobo_2026"
+      ]
+    },
+    "lara": {
+      "label": "Lara (Barquisimeto)",
+      "tier": "media",
+      "avg_outage_hours_month": 50,
+      "basis": "Aparece reiteradamente en el listado OVSP de ciudades más afectadas, pero sin testimonio de cortes diarios sostenidos como Zulia/Aragua/Carabobo; se usa la frecuencia nacional de 3-4 veces/semana como ancla.",
+      "source_ids": [
+        "ovsp_2024_nacional"
+      ]
+    },
+    "nueva_esparta": {
+      "label": "Nueva Esparta (Isla Margarita/Porlamar)",
+      "tier": "media",
+      "avg_outage_hours_month": 50,
+      "basis": "Porlamar aparece repetidamente entre las ciudades más afectadas en estudios OVSP; misma ancla de frecuencia nacional que Lara.",
+      "source_ids": [
+        "ovsp_2024_nacional"
+      ]
+    },
+    "gran_caracas": {
+      "label": "Distrito Capital / Miranda (Gran Caracas)",
+      "tier": "baja",
+      "avg_outage_hours_month": 10,
+      "basis": "Consistentemente reportada como la región con menor incidencia relativa de fallas, aunque no inmune a apagones nacionales puntuales.",
+      "source_ids": [
+        "cronica_uno_gran_caracas",
+        "ntn24_apagon_nacional_2025"
+      ]
+    }
+  },
+  "city_to_estado": {
+    "valencia": "carabobo",
+    "maracaibo": "zulia",
+    "maracay": "aragua",
+    "margarita": "nueva_esparta",
+    "barquisimeto": "lara",
+    "baruta": "gran_caracas",
+    "chacao": "gran_caracas",
+    "el_hatillo": "gran_caracas",
+    "libertador": "gran_caracas",
+    "sucre": "gran_caracas",
+    "distrito_capital": "gran_caracas",
+    "caracas": "gran_caracas"
+  }
+}

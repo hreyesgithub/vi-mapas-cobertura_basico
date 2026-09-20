@@ -1,0 +1,247 @@
+{
+  "generated_at": "2026-09-19T11:22:17.253534+00:00",
+  "source": "NASA POWER (power.larc.nasa.gov), endpoint climatology/point",
+  "parameter": "ALLSKY_SFC_SW_DWN",
+  "community": "RE",
+  "cities": {
+    "valencia": {
+      "label": "Valencia (Carabobo)",
+      "lat": 10.162,
+      "lon": -68.0077,
+      "solar_irradiance_kwh_m2_day": 5.006,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "maracaibo": {
+      "label": "Maracaibo (Zulia)",
+      "lat": 10.6427,
+      "lon": -71.6125,
+      "solar_irradiance_kwh_m2_day": 5.518,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "maracay": {
+      "label": "Maracay (Aragua)",
+      "lat": 10.2469,
+      "lon": -67.5959,
+      "solar_irradiance_kwh_m2_day": 5.423,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "margarita": {
+      "label": "Isla Margarita (Nueva Esparta)",
+      "lat": 11.0,
+      "lon": -64.0,
+      "solar_irradiance_kwh_m2_day": 6.024,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "barquisimeto": {
+      "label": "Barquisimeto (Lara)",
+      "lat": 10.0678,
+      "lon": -69.3474,
+      "solar_irradiance_kwh_m2_day": 5.249,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "alto_prado": {
+      "label": "Alto Prado (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "baruta": {
+      "label": "Baruta (Caracas)",
+      "lat": 10.438,
+      "lon": -66.8756,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "caicaguana": {
+      "label": "Caicaguana (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "caracas": {
+      "label": "Caracas (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "cerro_verde": {
+      "label": "Cerro Verde (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "chacao": {
+      "label": "Chacao (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "colinas_del_tamanaco": {
+      "label": "Colinas Del Tamanaco (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "distrito_capital": {
+      "label": "Distrito Capital (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.9036,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "el_hatillo": {
+      "label": "El Hatillo (Caracas)",
+      "lat": 10.3859,
+      "lon": -66.8228,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "el_marques": {
+      "label": "El Marques (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "el_placer": {
+      "label": "El Placer (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "guaicay": {
+      "label": "Guaicay (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "horizonte": {
+      "label": "Horizonte (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "la_floresta": {
+      "label": "La Floresta (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "las_marias": {
+      "label": "Las Marias (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "libertador": {
+      "label": "Libertador (Caracas)",
+      "lat": 10.5,
+      "lon": -66.917,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "los_campitos": {
+      "label": "Los Campitos (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "los_guayabitos": {
+      "label": "Los Guayabitos (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "miranda": {
+      "label": "Miranda (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "monte_claro": {
+      "label": "Monte Claro (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "no_especificada": {
+      "label": "No Especificada (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "paraiso": {
+      "label": "Paraiso (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "parque_caiza": {
+      "label": "Parque Caiza (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "san_luis": {
+      "label": "San Luis (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "san_roman": {
+      "label": "San Román (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "santa_monica": {
+      "label": "Santa Monica (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "santa_sofia": {
+      "label": "Santa Sofía (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "sucre": {
+      "label": "Sucre (Caracas)",
+      "lat": 10.4806,
+      "lon": -66.8092,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    },
+    "vista_alegre": {
+      "label": "Vista Alegre (Caracas)",
+      "lat": 10.4989,
+      "lon": -66.8535,
+      "solar_irradiance_kwh_m2_day": 5.479,
+      "source": "NASA POWER — climatología ANN, ALLSKY_SFC_SW_DWN (~2001-2020)"
+    }
+  },
+  "errors": {}
+}

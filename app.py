@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 # FLASK
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 
 from pydantic import BaseModel, Field, field_validator, ValidationError
 
@@ -49,8 +50,12 @@ from utilidades.reuso_freq_link_microwave import (
     exportar_json_estructura,
 )
 
+from utilidades.models import ScoreRequestModel, CityInfo, SavedScanRequest
+from utilidades.scoring_engine import ScoreRequest, run_full_analysis, CITY_REFERENCE_DATA
+
 # SUPABASE
 from supabase import create_client, Client  # type: ignore
+import utilidades.supabase_client
 
 # LOGGING
 import logging
@@ -59,7 +64,7 @@ import logging
 import google.generativeai as genai
 from google.generativeai import GenerativeModel  # type: ignore
 
-# Configurar el logger al inicio de tu app.py
+# Configurar el logger al inicio
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
@@ -1070,7 +1075,7 @@ class DiagnosticoRequest(BaseModel):
 # -------------------- LÓGICA DE CÁLCULO --------------------
 def calcular_vulnerabilidad(
     margen: float, rotacion: int, costos_idx: float, dolor: str
-) -> dict:
+    ) -> dict:
     # Factor de inflación anualizada
     INFLACION_ANUAL = 611.0
     inflacion_mensual = (1 + INFLACION_ANUAL / 100) ** (1 / 12) - 1
@@ -1198,9 +1203,18 @@ def diagnosticar():
 # ENDPOINT: /health
 # ============================================================
 @app.route("/health", methods=["GET"])
-def health_check():
-    return {"status": "ok"}, 200
+def health_check_corto():
+    return {
+                "status": "ok", 
+                "service": "venezuela-insights",}, 200
 
+@app.get("/api/health")
+def health_check():
+    return {
+        "status": "ok",
+        "service": "venezuela-insights-convergence-engine",
+        "supabase_enabled": utilidades.supabase_client.is_enabled(),
+    }
 
 # ============================================================
 # 7. ENDPOINT: /api/optimize
@@ -2752,6 +2766,60 @@ def optimizar_reuso():
             500,
         )
 
+# ============================================================
+# ENDPOINT: apis relacionadas con análisis de convergencia
+# ============================================================
+@app.get("/api/cities", response_model=list[CityInfo])
+def list_cities():
+    return [
+        CityInfo(
+            key=key,
+            label=data["label"],
+            lat=data["lat"],
+            lon=data["lon"],
+            base_value_usd_m2=data["base_value_usd_m2"],
+            data_source=data.get("data_source", "estimado"),
+            market_sample_size=data.get("market_sample_size"),
+        )
+        for key, data in CITY_REFERENCE_DATA.items()
+    ]
+
+
+@app.post("/api/score")
+def compute_score(req: ScoreRequestModel):
+    try:
+        engine_req = ScoreRequest(
+            city_key=req.city_key,
+            distance_to_tower_km=req.distance_to_tower_km,
+            frequency_mhz=req.frequency_mhz,
+            fiber_backbone_distance_km=req.fiber_backbone_distance_km,
+            avg_outage_hours_month=req.avg_outage_hours_month,
+            panel_area_m2=req.panel_area_m2,
+            panel_efficiency=req.panel_efficiency,
+            daily_consumption_kwh=req.daily_consumption_kwh,
+            property_area_m2=req.property_area_m2,
+            property_type=req.property_type,
+        )
+        result = run_full_analysis(engine_req)
+        return result
+    except ValueError as e:
+        raise HTTPException(description=str(e), response=None)
+
+
+@app.post("/api/scans")
+def save_scan(req: SavedScanRequest):
+    """Guarda un escaneo en Supabase si está configurado. No falla si no lo está."""
+    if not utilidades.supabase_client.is_enabled():
+        return {"saved": False, "reason": "Supabase no configurado (modo demo)."}
+    data = utilidades.supabase_client.save_scan(req.city_key, req.vis_score, req.payload)
+    return {"saved": True, "data": data}
+
+
+@app.get("/api/scans")
+def recent_scans():
+    if not utilidades.supabase_client.is_enabled():
+        return {"scans": [], "supabase_enabled": False}
+    return {"scans": utilidades.supabase_client.get_recent_scans(), "supabase_enabled": True}
 
 # ============================================================
 # ARRANQUE

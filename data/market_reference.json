@@ -1,0 +1,759 @@
+{
+  "generated_at": "2026-09-19T11:37:48.715032+00:00",
+  "source_file": "resultado_consolidado.xlsx",
+  "min_sample_size": 5,
+  "total_listings_ventas": 13264,
+  "total_listings_alquileres": 1452,
+  "zonas": {
+    "alto_prado": {
+      "label": "Alto Prado",
+      "ventas_precio_m2_mediana": 1024.1,
+      "ventas_precio_m2_p25": 800.76,
+      "ventas_precio_m2_p75": 1350.09,
+      "ventas_muestra": 103,
+      "alquiler_precio_m2_mediana": 6.19,
+      "alquiler_muestra": 5,
+      "rental_yield_anual_pct": 7.25
+    },
+    "baruta": {
+      "label": "Baruta",
+      "ventas_precio_m2_mediana": 1252.43,
+      "ventas_precio_m2_p25": 888.89,
+      "ventas_precio_m2_p75": 1923.08,
+      "ventas_muestra": 3954,
+      "alquiler_precio_m2_mediana": 12.5,
+      "alquiler_muestra": 460,
+      "rental_yield_anual_pct": 11.98
+    },
+    "boleita_sur": {
+      "label": "Boleita Sur",
+      "ventas_precio_m2_mediana": 1483.33,
+      "ventas_precio_m2_p25": 1126.04,
+      "ventas_precio_m2_p75": 1620.84,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "caicaguana": {
+      "label": "Caicaguana",
+      "ventas_precio_m2_mediana": 340.91,
+      "ventas_precio_m2_p25": 260.0,
+      "ventas_precio_m2_p75": 625.0,
+      "ventas_muestra": 45,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "campo_claro": {
+      "label": "Campo Claro",
+      "ventas_precio_m2_mediana": 744.67,
+      "ventas_precio_m2_p25": 633.33,
+      "ventas_precio_m2_p75": 822.13,
+      "ventas_muestra": 14,
+      "alquiler_precio_m2_mediana": 15.09,
+      "alquiler_muestra": 4,
+      "rental_yield_anual_pct": 24.32
+    },
+    "caracas": {
+      "label": "Caracas",
+      "ventas_precio_m2_mediana": 863.72,
+      "ventas_precio_m2_p25": 617.93,
+      "ventas_precio_m2_p75": 1318.13,
+      "ventas_muestra": 222,
+      "alquiler_precio_m2_mediana": 10.34,
+      "alquiler_muestra": 41,
+      "rental_yield_anual_pct": 14.37
+    },
+    "catia": {
+      "label": "Catia",
+      "ventas_precio_m2_mediana": 398.93,
+      "ventas_precio_m2_p25": 192.74,
+      "ventas_precio_m2_p75": 758.06,
+      "ventas_muestra": 28,
+      "alquiler_precio_m2_mediana": 4.55,
+      "alquiler_muestra": 4,
+      "rental_yield_anual_pct": 13.69
+    },
+    "cerro_verde": {
+      "label": "Cerro Verde",
+      "ventas_precio_m2_mediana": 1816.35,
+      "ventas_precio_m2_p25": 1461.54,
+      "ventas_precio_m2_p75": 2125.0,
+      "ventas_muestra": 73,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "chacao": {
+      "label": "Chacao",
+      "ventas_precio_m2_mediana": 2012.2,
+      "ventas_precio_m2_p25": 1389.61,
+      "ventas_precio_m2_p75": 3192.98,
+      "ventas_muestra": 1336,
+      "alquiler_precio_m2_mediana": 15.11,
+      "alquiler_muestra": 302,
+      "rental_yield_anual_pct": 9.01
+    },
+    "charallavito": {
+      "label": "Charallavito",
+      "ventas_precio_m2_mediana": 850.0,
+      "ventas_precio_m2_p25": 308.34,
+      "ventas_precio_m2_p75": 850.0,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "colinas_de_caicaguana": {
+      "label": "Colinas De Caicaguana",
+      "ventas_precio_m2_mediana": 210.7,
+      "ventas_precio_m2_p25": 210.7,
+      "ventas_precio_m2_p75": 1066.67,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "colinas_de_tamanaco": {
+      "label": "Colinas De Tamanaco",
+      "ventas_precio_m2_mediana": 2068.97,
+      "ventas_precio_m2_p25": 1203.68,
+      "ventas_precio_m2_p75": 2527.47,
+      "ventas_muestra": 11,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "colinas_del_tamanaco": {
+      "label": "Colinas del Tamanaco",
+      "ventas_precio_m2_mediana": 2023.12,
+      "ventas_precio_m2_p25": 1772.66,
+      "ventas_precio_m2_p75": 2034.58,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "distrito_capital": {
+      "label": "Distrito Capital",
+      "ventas_precio_m2_mediana": 1259.33,
+      "ventas_precio_m2_p25": 918.64,
+      "ventas_precio_m2_p75": 1784.12,
+      "ventas_muestra": 172,
+      "alquiler_precio_m2_mediana": 9.88,
+      "alquiler_muestra": 18,
+      "rental_yield_anual_pct": 9.41
+    },
+    "el_hatillo": {
+      "label": "El Hatillo",
+      "ventas_precio_m2_mediana": 1139.41,
+      "ventas_precio_m2_p25": 818.18,
+      "ventas_precio_m2_p75": 1597.8,
+      "ventas_muestra": 2347,
+      "alquiler_precio_m2_mediana": 10.71,
+      "alquiler_muestra": 184,
+      "rental_yield_anual_pct": 11.28
+    },
+    "el_junko": {
+      "label": "El Junko",
+      "ventas_precio_m2_mediana": 307.69,
+      "ventas_precio_m2_p25": 241.09,
+      "ventas_precio_m2_p75": 389.56,
+      "ventas_muestra": 11,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "el_marques": {
+      "label": "El Marques",
+      "ventas_precio_m2_mediana": 721.15,
+      "ventas_precio_m2_p25": 519.31,
+      "ventas_precio_m2_p75": 889.33,
+      "ventas_muestra": 60,
+      "alquiler_precio_m2_mediana": 9.85,
+      "alquiler_muestra": 5,
+      "rental_yield_anual_pct": 16.39
+    },
+    "el_paraiso": {
+      "label": "El Paraíso",
+      "ventas_precio_m2_mediana": 583.53,
+      "ventas_precio_m2_p25": 413.79,
+      "ventas_precio_m2_p75": 682.57,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "el_pedregal": {
+      "label": "El Pedregal",
+      "ventas_precio_m2_mediana": 2321.43,
+      "ventas_precio_m2_p25": 2320.0,
+      "ventas_precio_m2_p75": 2321.43,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "el_placer": {
+      "label": "El Placer",
+      "ventas_precio_m2_mediana": 709.46,
+      "ventas_precio_m2_p25": 400.0,
+      "ventas_precio_m2_p75": 916.67,
+      "ventas_muestra": 57,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "guaicaipuro": {
+      "label": "Guaicaipuro",
+      "ventas_precio_m2_mediana": 555.56,
+      "ventas_precio_m2_p25": 555.56,
+      "ventas_precio_m2_p75": 961.54,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "guaicay": {
+      "label": "Guaicay",
+      "ventas_precio_m2_mediana": 1276.04,
+      "ventas_precio_m2_p25": 993.33,
+      "ventas_precio_m2_p75": 1481.48,
+      "ventas_muestra": 27,
+      "alquiler_precio_m2_mediana": 4.74,
+      "alquiler_muestra": 9,
+      "rental_yield_anual_pct": 4.46
+    },
+    "horizonte": {
+      "label": "Horizonte",
+      "ventas_precio_m2_mediana": 1274.9,
+      "ventas_precio_m2_p25": 1128.51,
+      "ventas_precio_m2_p75": 1299.22,
+      "ventas_muestra": 19,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "karimao_country": {
+      "label": "Karimao Country",
+      "ventas_precio_m2_mediana": 422.22,
+      "ventas_precio_m2_p25": 422.22,
+      "ventas_precio_m2_p75": 574.71,
+      "ventas_muestra": 9,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "la_california": {
+      "label": "La California",
+      "ventas_precio_m2_mediana": 958.48,
+      "ventas_precio_m2_p25": 595.78,
+      "ventas_precio_m2_p75": 1137.84,
+      "ventas_muestra": 10,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "la_ciudadela": {
+      "label": "La Ciudadela",
+      "ventas_precio_m2_mediana": 718.68,
+      "ventas_precio_m2_p25": 604.03,
+      "ventas_precio_m2_p75": 866.67,
+      "ventas_muestra": 10,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "la_floresta": {
+      "label": "La Floresta",
+      "ventas_precio_m2_mediana": 1743.12,
+      "ventas_precio_m2_p25": 1111.11,
+      "ventas_precio_m2_p75": 1850.0,
+      "ventas_muestra": 24,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "las_marias": {
+      "label": "Las Marías",
+      "ventas_precio_m2_mediana": 763.68,
+      "ventas_precio_m2_p25": 537.2,
+      "ventas_precio_m2_p75": 957.14,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "lebrun": {
+      "label": "Lebrun",
+      "ventas_precio_m2_mediana": 1111.11,
+      "ventas_precio_m2_p25": 1111.11,
+      "ventas_precio_m2_p75": 1111.11,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "libertador": {
+      "label": "Libertador",
+      "ventas_precio_m2_mediana": 740.74,
+      "ventas_precio_m2_p25": 534.43,
+      "ventas_precio_m2_p75": 1016.26,
+      "ventas_muestra": 1395,
+      "alquiler_precio_m2_mediana": 8.87,
+      "alquiler_muestra": 99,
+      "rental_yield_anual_pct": 14.37
+    },
+    "loma_larga": {
+      "label": "Loma Larga",
+      "ventas_precio_m2_mediana": 325.0,
+      "ventas_precio_m2_p25": 325.0,
+      "ventas_precio_m2_p75": 385.07,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "lomas_de_monte_claro": {
+      "label": "Lomas De Monte Claro",
+      "ventas_precio_m2_mediana": 371.43,
+      "ventas_precio_m2_p25": 353.45,
+      "ventas_precio_m2_p75": 383.6,
+      "ventas_muestra": 13,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "lomas_de_urdaneta": {
+      "label": "Lomas De Urdaneta",
+      "ventas_precio_m2_mediana": 651.16,
+      "ventas_precio_m2_p25": 651.16,
+      "ventas_precio_m2_p75": 655.05,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "lomas_del_club_hipico": {
+      "label": "Lomas Del Club Hípico",
+      "ventas_precio_m2_mediana": 426.83,
+      "ventas_precio_m2_p25": 375.0,
+      "ventas_precio_m2_p75": 426.83,
+      "ventas_muestra": 7,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "lomas_del_halcon": {
+      "label": "Lomas Del Halcon",
+      "ventas_precio_m2_mediana": 420.0,
+      "ventas_precio_m2_p25": 358.0,
+      "ventas_precio_m2_p75": 513.64,
+      "ventas_muestra": 15,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "los_campitos": {
+      "label": "Los Campitos",
+      "ventas_precio_m2_mediana": 2272.34,
+      "ventas_precio_m2_p25": 1828.38,
+      "ventas_precio_m2_p75": 3000.0,
+      "ventas_muestra": 55,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 2,
+      "rental_yield_anual_pct": null
+    },
+    "los_cortijos_de_lourdes": {
+      "label": "Los Cortijos De Lourdes",
+      "ventas_precio_m2_mediana": 1006.45,
+      "ventas_precio_m2_p25": 1006.45,
+      "ventas_precio_m2_p75": 1006.45,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "los_guayabitos": {
+      "label": "Los Guayabitos",
+      "ventas_precio_m2_mediana": 729.17,
+      "ventas_precio_m2_p25": 558.14,
+      "ventas_precio_m2_p75": 879.92,
+      "ventas_muestra": 36,
+      "alquiler_precio_m2_mediana": 5.0,
+      "alquiler_muestra": 5,
+      "rental_yield_anual_pct": 8.23
+    },
+    "los_naranjos": {
+      "label": "Los Naranjos",
+      "ventas_precio_m2_mediana": 1167.66,
+      "ventas_precio_m2_p25": 852.5,
+      "ventas_precio_m2_p75": 1698.04,
+      "ventas_muestra": 7,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "mariperez": {
+      "label": "Mariperez",
+      "ventas_precio_m2_mediana": 1666.67,
+      "ventas_precio_m2_p25": 909.09,
+      "ventas_precio_m2_p75": 1724.14,
+      "ventas_muestra": 13,
+      "alquiler_precio_m2_mediana": 5.88,
+      "alquiler_muestra": 4,
+      "rental_yield_anual_pct": 4.23
+    },
+    "miranda": {
+      "label": "Miranda",
+      "ventas_precio_m2_mediana": 753.97,
+      "ventas_precio_m2_p25": 566.67,
+      "ventas_precio_m2_p75": 1012.66,
+      "ventas_muestra": 89,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "monte_claro": {
+      "label": "Monte Claro",
+      "ventas_precio_m2_mediana": 737.33,
+      "ventas_precio_m2_p25": 437.9,
+      "ventas_precio_m2_p75": 1950.61,
+      "ventas_muestra": 22,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "monte_elena": {
+      "label": "Monte Elena",
+      "ventas_precio_m2_mediana": 1532.26,
+      "ventas_precio_m2_p25": 1275.14,
+      "ventas_precio_m2_p75": 1532.26,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "no_especificada": {
+      "label": "No Especificada",
+      "ventas_precio_m2_mediana": 824.18,
+      "ventas_precio_m2_p25": 516.43,
+      "ventas_precio_m2_p75": 1250.0,
+      "ventas_muestra": 685,
+      "alquiler_precio_m2_mediana": 7.92,
+      "alquiler_muestra": 62,
+      "rental_yield_anual_pct": 11.53
+    },
+    "otros": {
+      "label": "Otros",
+      "ventas_precio_m2_mediana": 866.6,
+      "ventas_precio_m2_p25": 657.76,
+      "ventas_precio_m2_p75": 1385.41,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "paraiso": {
+      "label": "Paraiso",
+      "ventas_precio_m2_mediana": 892.86,
+      "ventas_precio_m2_p25": 379.93,
+      "ventas_precio_m2_p75": 1111.11,
+      "ventas_muestra": 55,
+      "alquiler_precio_m2_mediana": 9.08,
+      "alquiler_muestra": 5,
+      "rental_yield_anual_pct": 12.2
+    },
+    "parque_caiza": {
+      "label": "Parque Caiza",
+      "ventas_precio_m2_mediana": 574.12,
+      "ventas_precio_m2_p25": 483.92,
+      "ventas_precio_m2_p75": 704.0,
+      "ventas_muestra": 28,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "parroquia_catedral": {
+      "label": "Parroquia Catedral",
+      "ventas_precio_m2_mediana": 654.51,
+      "ventas_precio_m2_p25": 408.8,
+      "ventas_precio_m2_p75": 900.0,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "parroquia_san_jose": {
+      "label": "Parroquia San Jose",
+      "ventas_precio_m2_mediana": 478.18,
+      "ventas_precio_m2_p25": 286.26,
+      "ventas_precio_m2_p75": 762.81,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": 8.33,
+      "alquiler_muestra": 3,
+      "rental_yield_anual_pct": 20.9
+    },
+    "parroquia_san_juan": {
+      "label": "Parroquia San Juan",
+      "ventas_precio_m2_mediana": 730.34,
+      "ventas_precio_m2_p25": 616.11,
+      "ventas_precio_m2_p75": 1091.99,
+      "ventas_muestra": 7,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 2,
+      "rental_yield_anual_pct": null
+    },
+    "parroquia_santa_rosalia": {
+      "label": "Parroquia Santa Rosalia",
+      "ventas_precio_m2_mediana": 748.13,
+      "ventas_precio_m2_p25": 461.57,
+      "ventas_precio_m2_p75": 785.16,
+      "ventas_muestra": 18,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "petare": {
+      "label": "Petare",
+      "ventas_precio_m2_mediana": 612.24,
+      "ventas_precio_m2_p25": 565.68,
+      "ventas_precio_m2_p75": 635.15,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "piedra_azul": {
+      "label": "Piedra Azul",
+      "ventas_precio_m2_mediana": 640.0,
+      "ventas_precio_m2_p25": 640.0,
+      "ventas_precio_m2_p75": 640.0,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "prado_de_maria": {
+      "label": "Prado De Maria",
+      "ventas_precio_m2_mediana": 607.14,
+      "ventas_precio_m2_p25": 464.29,
+      "ventas_precio_m2_p75": 625.0,
+      "ventas_muestra": 7,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "propatria": {
+      "label": "Propatria",
+      "ventas_precio_m2_mediana": 609.24,
+      "ventas_precio_m2_p25": 609.24,
+      "ventas_precio_m2_p75": 609.24,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "sabaneta": {
+      "label": "Sabaneta",
+      "ventas_precio_m2_mediana": 402.31,
+      "ventas_precio_m2_p25": 206.25,
+      "ventas_precio_m2_p75": 592.11,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_agustin": {
+      "label": "San Agustin",
+      "ventas_precio_m2_mediana": 446.43,
+      "ventas_precio_m2_p25": 323.45,
+      "ventas_precio_m2_p75": 545.79,
+      "ventas_muestra": 11,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_jose": {
+      "label": "San Jose",
+      "ventas_precio_m2_mediana": 875.0,
+      "ventas_precio_m2_p25": 875.0,
+      "ventas_precio_m2_p75": 1020.41,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_juan": {
+      "label": "San Juan",
+      "ventas_precio_m2_mediana": 820.31,
+      "ventas_precio_m2_p25": 546.05,
+      "ventas_precio_m2_p75": 820.31,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_luis": {
+      "label": "San Luis",
+      "ventas_precio_m2_mediana": 1451.67,
+      "ventas_precio_m2_p25": 725.67,
+      "ventas_precio_m2_p75": 1983.33,
+      "ventas_muestra": 42,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_martin": {
+      "label": "San Martin",
+      "ventas_precio_m2_mediana": 656.2,
+      "ventas_precio_m2_p25": 556.96,
+      "ventas_precio_m2_p75": 776.6,
+      "ventas_muestra": 12,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "san_roman": {
+      "label": "San Román",
+      "ventas_precio_m2_mediana": 1496.6,
+      "ventas_precio_m2_p25": 1102.02,
+      "ventas_precio_m2_p75": 3239.44,
+      "ventas_muestra": 33,
+      "alquiler_precio_m2_mediana": 6.11,
+      "alquiler_muestra": 5,
+      "rental_yield_anual_pct": 4.9
+    },
+    "santa_cecilia": {
+      "label": "Santa Cecilia",
+      "ventas_precio_m2_mediana": 625.0,
+      "ventas_precio_m2_p25": 474.36,
+      "ventas_precio_m2_p75": 902.88,
+      "ventas_muestra": 10,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "santa_fe_norte": {
+      "label": "Santa Fe Norte",
+      "ventas_precio_m2_mediana": 1337.21,
+      "ventas_precio_m2_p25": 1251.26,
+      "ventas_precio_m2_p75": 1399.89,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "santa_marta": {
+      "label": "Santa Marta",
+      "ventas_precio_m2_mediana": 677.25,
+      "ventas_precio_m2_p25": 619.2,
+      "ventas_precio_m2_p75": 1030.6,
+      "ventas_muestra": 6,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    },
+    "santa_monica": {
+      "label": "Santa Monica",
+      "ventas_precio_m2_mediana": 1040.0,
+      "ventas_precio_m2_p25": 676.33,
+      "ventas_precio_m2_p75": 1524.16,
+      "ventas_muestra": 84,
+      "alquiler_precio_m2_mediana": 8.82,
+      "alquiler_muestra": 9,
+      "rental_yield_anual_pct": 10.18
+    },
+    "santa_rosalia": {
+      "label": "Santa Rosalía",
+      "ventas_precio_m2_mediana": 746.27,
+      "ventas_precio_m2_p25": 686.29,
+      "ventas_precio_m2_p75": 796.88,
+      "ventas_muestra": 8,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "santa_sofia": {
+      "label": "Santa Sofía",
+      "ventas_precio_m2_mediana": 1109.33,
+      "ventas_precio_m2_p25": 748.45,
+      "ventas_precio_m2_p75": 1316.07,
+      "ventas_muestra": 14,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "santa_teresa": {
+      "label": "Santa Teresa",
+      "ventas_precio_m2_mediana": 846.15,
+      "ventas_precio_m2_p25": 365.38,
+      "ventas_precio_m2_p75": 846.15,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "sucre": {
+      "label": "Sucre",
+      "ventas_precio_m2_mediana": 927.84,
+      "ventas_precio_m2_p25": 681.82,
+      "ventas_precio_m2_p75": 1327.43,
+      "ventas_muestra": 1649,
+      "alquiler_precio_m2_mediana": 9.33,
+      "alquiler_muestra": 190,
+      "rental_yield_anual_pct": 12.07
+    },
+    "terrazas_del_avila": {
+      "label": "Terrazas del Ávila",
+      "ventas_precio_m2_mediana": 996.62,
+      "ventas_precio_m2_p25": 927.84,
+      "ventas_precio_m2_p75": 1268.66,
+      "ventas_muestra": 5,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "turumo": {
+      "label": "Turumo",
+      "ventas_precio_m2_mediana": 338.71,
+      "ventas_precio_m2_p25": 119.45,
+      "ventas_precio_m2_p75": 459.42,
+      "ventas_muestra": 9,
+      "alquiler_precio_m2_mediana": 2.89,
+      "alquiler_muestra": 4,
+      "rental_yield_anual_pct": 10.24
+    },
+    "tusmare": {
+      "label": "Tusmare",
+      "ventas_precio_m2_mediana": 747.13,
+      "ventas_precio_m2_p25": 440.53,
+      "ventas_precio_m2_p75": 827.06,
+      "ventas_muestra": 7,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 0,
+      "rental_yield_anual_pct": null
+    },
+    "villa_nueva_hatillo": {
+      "label": "Villa Nueva Hatillo",
+      "ventas_precio_m2_mediana": 1040.0,
+      "ventas_precio_m2_p25": 591.89,
+      "ventas_precio_m2_p75": 1472.87,
+      "ventas_muestra": 17,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 2,
+      "rental_yield_anual_pct": null
+    },
+    "vista_alegre": {
+      "label": "Vista Alegre",
+      "ventas_precio_m2_mediana": 734.97,
+      "ventas_precio_m2_p25": 581.66,
+      "ventas_precio_m2_p75": 1102.94,
+      "ventas_muestra": 21,
+      "alquiler_precio_m2_mediana": null,
+      "alquiler_muestra": 1,
+      "rental_yield_anual_pct": null
+    }
+  }
+}
