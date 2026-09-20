@@ -1965,7 +1965,7 @@ def generar_presupuesto():
 
 
 # ============================================================
-# ENDPOINT: /api/generar-reporte-sombras (PDF)
+# 13 ENDPOINT: /api/generar-reporte-sombras (PDF)
 # ============================================================
 @app.route("/api/generar-reporte-sombras", methods=["POST"])
 def generar_reporte_sombras():
@@ -2005,7 +2005,7 @@ def generar_reporte_sombras():
 
 
 # ============================================================
-# ENDPOINT: /api/generar-propuesta
+# 14. ENDPOINT: /api/generar-propuesta
 # ============================================================
 @app.route("/api/generar-propuesta", methods=["POST"])
 def generar_propuesta():
@@ -2164,8 +2164,8 @@ def generar_pdf_propuesta():
         return jsonify({"error": str(e)}), 500
 
 
-# ============================================================
-# ENDPOINT: /api/optimizar-turnos
+# ===========================================================
+# 15. ENDPOINT: /api/optimizar-turnos
 # ============================================================
 @app.route("/api/optimizar-turnos", methods=["POST"])
 def optimizar_turnos():
@@ -2376,7 +2376,7 @@ def generar_pdf_turnos():
 
 
 # ============================================================
-# ENDPOINT: /api/simular-trafico (Simulador de Tráfico de Redes)
+# 16. ENDPOINT: /api/simular-trafico (Simulador de Tráfico de Redes)
 # ============================================================
 @app.route("/api/simular-trafico", methods=["POST"])
 def api_simular_trafico():
@@ -2421,7 +2421,7 @@ def api_simular_trafico():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/generar-pdf-simulacion", methods=["POST"])
+@app.route("/api/generar-pdf-simuacion", methods=["POST"])
 def generar_pdf_simulacion():
     try:
         data = request.get_json()
@@ -2567,7 +2567,7 @@ def generar_pdf_simulacion():
 
 
 # ============================================================
-# ENDPOINT: /api/optimizar-cuadrillas (CANTV)
+# 17. ENDPOINT: /api/optimizar-cuadrillas (CANTV)
 # ============================================================
 @app.route("/api/optimizar-cuadrillas", methods=["POST"])
 def agrupar_reportes():
@@ -2643,7 +2643,7 @@ def agrupar_reportes():
 
 
 # ============================================================
-# ENDPOINT: /api/bio-electrica (CANTV)
+# 18. ENDPOINT: /api/bio-electrica (CANTV)
 # ============================================================
 @app.route("/api/bio-electrica/estado")
 def api_estado():
@@ -2667,7 +2667,7 @@ def api_reset():
 
 
 # ============================================================
-# ENDPOINT: /api/optimizar-reuso (Microondas)
+# 19. ENDPOINT: /api/optimizar-reuso (Microondas)
 # ============================================================
 @app.route("/api/optimizar-reuso", methods=["POST"])
 def optimizar_reuso():
@@ -2767,11 +2767,17 @@ def optimizar_reuso():
         )
 
 # ============================================================
-# ENDPOINT: apis relacionadas con análisis de convergencia
+# 20. ENDPOINT: apis relacionadas con análisis de convergencia
+#
+# NOTA: estos 4 endpoints se escribieron originalmente para FastAPI
+# (donde `response_model=` existe y el parámetro tipado en la firma de la
+# función se parsea automáticamente desde el body). Flask no hace ninguna
+# de las dos cosas, así que aquí se valida el body a mano con Pydantic y se
+# serializa la respuesta con jsonify().
 # ============================================================
-@app.get("/api/cities", response_model=list[CityInfo])
+@app.get("/api/cities")
 def list_cities():
-    return [
+    cities = [
         CityInfo(
             key=key,
             label=data["label"],
@@ -2783,10 +2789,16 @@ def list_cities():
         )
         for key, data in CITY_REFERENCE_DATA.items()
     ]
+    return jsonify([c.model_dump() for c in cities])
 
 
 @app.post("/api/score")
-def compute_score(req: ScoreRequestModel):
+def compute_score():
+    try:
+        req = ScoreRequestModel(**(request.get_json(force=True, silent=True) or {}))
+    except ValidationError as e:
+        return jsonify({"detail": json.loads(e.json())}), 422
+
     try:
         engine_req = ScoreRequest(
             city_key=req.city_key,
@@ -2801,25 +2813,30 @@ def compute_score(req: ScoreRequestModel):
             property_type=req.property_type,
         )
         result = run_full_analysis(engine_req)
-        return result
+        return jsonify(result)
     except ValueError as e:
-        raise HTTPException(description=str(e), response=None)
+        return jsonify({"detail": str(e)}), 400
 
 
 @app.post("/api/scans")
-def save_scan(req: SavedScanRequest):
+def save_scan():
     """Guarda un escaneo en Supabase si está configurado. No falla si no lo está."""
+    try:
+        req = SavedScanRequest(**(request.get_json(force=True, silent=True) or {}))
+    except ValidationError as e:
+        return jsonify({"detail": json.loads(e.json())}), 422
+
     if not utilidades.supabase_client.is_enabled():
-        return {"saved": False, "reason": "Supabase no configurado (modo demo)."}
+        return jsonify({"saved": False, "reason": "Supabase no configurado (modo demo)."})
     data = utilidades.supabase_client.save_scan(req.city_key, req.vis_score, req.payload)
-    return {"saved": True, "data": data}
+    return jsonify({"saved": True, "data": data})
 
 
 @app.get("/api/scans")
 def recent_scans():
     if not utilidades.supabase_client.is_enabled():
-        return {"scans": [], "supabase_enabled": False}
-    return {"scans": utilidades.supabase_client.get_recent_scans(), "supabase_enabled": True}
+        return jsonify({"scans": [], "supabase_enabled": False})
+    return jsonify({"scans": utilidades.supabase_client.get_recent_scans(), "supabase_enabled": True})
 
 # ============================================================
 # ARRANQUE
