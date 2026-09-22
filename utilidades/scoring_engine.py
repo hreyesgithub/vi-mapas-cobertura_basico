@@ -104,6 +104,12 @@ def _load_real_market_cities() -> dict:
     """Carga data/market_reference.json (generado por ingest_market_data.py)
     y construye entradas de CITY_REFERENCE_DATA con datos reales de precio."""
     if not _MARKET_DATA_PATH.exists():
+        print(f"[scoring_engine] WARN: market_reference.json no encontrado en {_MARKET_DATA_PATH}. Usando solo datos estimados.")
+        return {}
+    try:
+        raw = json.loads(_MARKET_DATA_PATH.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"[scoring_engine] ERROR leyendo market_reference.json: {e!r}")
         return {}
 
     raw = json.loads(_MARKET_DATA_PATH.read_text(encoding="utf-8"))
@@ -190,10 +196,12 @@ def _load_real_solar_irradiance() -> dict:
     no hubo acceso de red al generarlo), retorna {} y todas las ciudades
     conservan su irradiancia ESTIMADA sin romper nada."""
     if not _SOLAR_DATA_PATH.exists():
+        print(f"[scoring_engine] WARN: solar_irradiance.json no encontrado en {_MARKET_DATA_PATH}. Usando solo datos estimados.")
         return {}
     try:
         raw = json.loads(_SOLAR_DATA_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except Exception as e:
+        print(f"[scoring_engine] ERROR leyendo solar_irradiance.json: {e!r}")
         return {}
     return raw.get("cities", {})
 
@@ -204,10 +212,12 @@ def _load_grid_severity_index() -> dict:
     Retorna {} si no existe, dejando el avg_outage_hours_month ESTIMADO
     intacto en todas las ciudades."""
     if not _GRID_SEVERITY_PATH.exists():
+        print(f"[scoring_engine] WARN: grid_severity_index.json no encontrado en {_MARKET_DATA_PATH}. Usando solo datos estimados.")
         return {}
     try:
         raw = json.loads(_GRID_SEVERITY_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    except Exception as e:
+        print(f"[scoring_engine] ERROR leyendo grid_severity_index.json: {e!r}")
         return {}
 
     estados = raw.get("estados", {})
