@@ -102,7 +102,6 @@ FACTORES_URGENCIA = {
     "express": 1.3,  # 30% más por prioridad
 }
 
-
 # ============================================================
 # CONFIGURACIÓN GEMINI
 # ============================================================
@@ -2837,6 +2836,54 @@ def recent_scans():
     if not utilidades.supabase_client.is_enabled():
         return jsonify({"scans": [], "supabase_enabled": False})
     return jsonify({"scans": utilidades.supabase_client.get_recent_scans(), "supabase_enabled": True})
+
+# ============================================================
+# DEBUG
+# ============================================================
+from pathlib import Path
+
+@app.get("/api/_debug/data_files")
+def debug_data_files():
+    base = Path(__file__).parent
+    data_dir = base / "data"
+
+    info = {
+        "_cwd":              os.getcwd(),
+        "_file_location":    str(base),
+        "_files_in_base":    sorted([p.name for p in base.iterdir()]) if base.exists() else [],
+        "_data_dir":         str(data_dir),
+        "_data_dir_exists":  data_dir.exists(),
+        "_data_dir_listing": sorted([p.name for p in data_dir.iterdir()]) if data_dir.exists() else [],
+    }
+
+    # ¿Qué ve realmente el motor de scoring?
+    try:
+        import utilidades.scoring_engine
+        info["engine"] = {
+            "market_path":   str(utilidades.scoring_engine._MARKET_DATA_PATH),
+            "market_exists": utilidades.scoring_engine._MARKET_DATA_PATH.exists(),
+            "solar_path":    str(utilidades.scoring_engine._SOLAR_DATA_PATH),
+            "solar_exists":  utilidades.scoring_engine._SOLAR_DATA_PATH.exists(),
+            "grid_path":     str(utilidades.scoring_engine._GRID_SEVERITY_PATH),
+            "grid_exists":   utilidades.scoring_engine._GRID_SEVERITY_PATH.exists(),
+            "cities_count":  len(utilidades.scoring_engine.CITY_REFERENCE_DATA),
+            "cities_with_real_market": [
+                k for k, v in utilidades.scoring_engine.CITY_REFERENCE_DATA.items()
+                if v.get("data_source") == "real"
+            ],
+            "cities_with_real_solar": [
+                k for k, v in utilidades.scoring_engine.CITY_REFERENCE_DATA.items()
+                if v.get("solar_data_source") == "real"
+            ],
+            "cities_with_grid_proxy": [
+                k for k, v in utilidades.scoring_engine.CITY_REFERENCE_DATA.items()
+                if v.get("grid_data_source") == "proxy_ovsp"
+            ],
+        }
+    except Exception as e:
+        info["engine_error"] = repr(e)
+
+    return jsonify(info)
 
 # ============================================================
 # ARRANQUE
