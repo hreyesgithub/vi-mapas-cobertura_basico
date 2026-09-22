@@ -59,9 +59,45 @@ _CARACAS_MUNICIPIO_COORDS = {
     "caracas": (10.4989, -66.8535),
 }
 
-_MARKET_DATA_PATH = Path(__file__).parent / "data" / "market_reference.json"
-_SOLAR_DATA_PATH = Path(__file__).parent / "data" / "solar_irradiance.json"
-_GRID_SEVERITY_PATH = Path(__file__).parent / "data" / "grid_severity_index.json"
+# ---------------------------------------------------------------------------
+# Resolución robusta de la carpeta data/
+#
+# scoring_engine.py puede vivir en la raíz del proyecto o dentro de
+# subcarpetas (utilidades/, src/, etc.). Los JSON de datos, en cambio,
+# viven siempre en <raíz_del_proyecto>/data/.
+#
+# Estrategia: probar candidatos en orden y quedarse con el primero que
+# contenga los archivos esperados. Así no depende de la profundidad
+# exacta del módulo dentro del árbol de directorios.
+# ---------------------------------------------------------------------------
+_BASE = Path(__file__).resolve().parent
+
+_CANDIDATE_DATA_DIRS = [
+    _BASE / "data",                  # data/ junto a scoring_engine.py
+    _BASE.parent / "data",           # data/ un nivel arriba (caso actual)
+    _BASE.parent.parent / "data",    # data/ dos niveles arriba
+    Path.cwd() / "data",             # data/ en el cwd de ejecución
+]
+
+
+def _resolve_data_dir() -> Path:
+    for candidate in _CANDIDATE_DATA_DIRS:
+        if (candidate / "market_reference.json").exists():
+            return candidate
+    # Si ninguna existe, devolvemos la primera como referencia para que
+    # los mensajes de error muestren una ruta coherente.
+    return _CANDIDATE_DATA_DIRS[0]
+
+
+_DATA_DIR = _resolve_data_dir()
+_MARKET_DATA_PATH     = _DATA_DIR / "market_reference.json"
+_SOLAR_DATA_PATH      = _DATA_DIR / "solar_irradiance.json"
+_GRID_SEVERITY_PATH   = _DATA_DIR / "grid_severity_index.json"
+
+print(f"[scoring_engine] data dir resuelto: {_DATA_DIR}")
+print(f"[scoring_engine] market_reference.json existe: {_MARKET_DATA_PATH.exists()}")
+print(f"[scoring_engine] solar_irradiance.json existe: {_SOLAR_DATA_PATH.exists()}")
+print(f"[scoring_engine] grid_severity_index.json existe: {_GRID_SEVERITY_PATH.exists()}")
 
 
 def _load_real_market_cities() -> dict:
